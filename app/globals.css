@@ -158,11 +158,14 @@ h1,h2,p { overflow-wrap:anywhere; }
 .photo-move button { display:grid; place-items:center; width:25px; height:25px; border:0; border-radius:5px; background:#202526c9; color:#fff; }
 .add-photo { display:flex; flex-direction:column; justify-content:center; align-items:center; gap:5px; border:1px dashed var(--input); background:var(--soft); color:var(--sub); font-size:12px; font-weight:600; }
 .add-photo:hover { color:var(--coral-strong); border-color:var(--coral); }
+.file-hit-target { position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; z-index:1; }
+.add-photo:focus-within { outline:2px solid var(--ring); outline-offset:3px; }
 .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:30px; }
 .form-field { min-width:0; }
 .field-select,.field-input { width:100%!important; min-height:44px!important; border:1px solid var(--line)!important; border-radius:9px!important; background:var(--surface)!important; color:var(--ink)!important; padding:0 12px!important; font-size:15px!important; box-shadow:none!important; }
 .field-input { outline:none; }
 .field-input:focus,.field-select:focus-visible { border-color:var(--coral)!important; }
+.category-select { appearance:auto; }
 .inline-link { display:inline-flex; align-items:center; gap:3px; border:0; background:none; color:var(--coral-strong); padding:9px 0 0; font-size:13px; font-weight:650; }
 .inline-create { display:flex; gap:8px; padding:10px 12px; margin-top:7px; border-radius:9px; background:var(--soft); }
 .inline-create input { flex:1; min-width:0; border:0; outline:0; background:none; color:var(--ink); font-size:14px; }
