@@ -1,4 +1,4 @@
-const CACHE = "memorate-shell-v2";
+const CACHE = "memorate-shell-v3";
 const STATIC = ["/", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/apple-touch-icon.png"];
 self.addEventListener("install", event => {
   event.waitUntil((async () => {

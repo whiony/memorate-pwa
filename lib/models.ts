@@ -18,11 +18,11 @@ export type ThemePreference = "system" | "light" | "dark" | "amoled";
 export type UserPreferences = { theme: ThemePreference; defaultCurrency: string };
 
 export const INITIAL_CATEGORIES: Category[] = [
-  { id: "food", name: "Food", color: "#EBC984", createdAt: "" },
-  { id: "places", name: "Places", color: "#A6D3D0", createdAt: "" },
-  { id: "clothes", name: "Clothes", color: "#CBBBE4", createdAt: "" },
-  { id: "beauty", name: "Beauty", color: "#E7B9AF", createdAt: "" },
-  { id: "other", name: "Other", color: "#BAC5D4", createdAt: "" },
+  { id: "food", name: "Food", color: "#C7A576", createdAt: "" },
+  { id: "places", name: "Places", color: "#84A7A0", createdAt: "" },
+  { id: "clothes", name: "Clothes", color: "#A793B2", createdAt: "" },
+  { id: "beauty", name: "Beauty", color: "#C78D83", createdAt: "" },
+  { id: "other", name: "Other", color: "#9FA7A5", createdAt: "" },
 ];
-export const CATEGORY_COLORS = ["#EBC984", "#A6D3D0", "#CBBBE4", "#E7B9AF", "#BAC5D4", "#C4D6AA", "#D8BFA7", "#B9C9E6"];
+export const CATEGORY_COLORS = ["#C7A576", "#84A7A0", "#A793B2", "#C78D83", "#9FA7A5", "#9DAA82", "#B59B87", "#8D9EBA"];
 export const DEFAULT_PREFERENCES: UserPreferences = { theme: "system", defaultCurrency: "EUR" };

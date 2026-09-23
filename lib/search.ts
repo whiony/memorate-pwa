@@ -21,7 +21,7 @@ export function matchesNote(note: Note, categories: Category[], query: string): 
   const terms = normalize(query).split(" ").filter(Boolean);
   if (!terms.length) return true;
   const category = categories.find(item => item.id === note.categoryId)?.name || "uncategorized";
-  const haystack = normalize(`${note.title} ${category}`);
+  const haystack = normalize(`${note.title} ${category} ${note.comment}`);
   const words = haystack.split(" ");
   return terms.every(term => haystack.includes(term) || words.some(word => {
     if (word.startsWith(term)) return true;
