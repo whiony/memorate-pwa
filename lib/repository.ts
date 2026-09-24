@@ -49,14 +49,14 @@ export const repository = {
     const database = await db();
     const values = await new Promise<{ notes: Note[]; categories: Category[]; preferences: UserPreferences; generation: number }>((resolve, reject) => { const tx = database.transaction(["notes", "categories", "preferences", "metadata"]); const notes = tx.objectStore("notes").getAll(), categories = tx.objectStore("categories").getAll(), prefs = tx.objectStore("preferences").get("user"), gen = tx.objectStore("metadata").get("generation"); tx.oncomplete = () => resolve({ notes: notes.result, categories: categories.result, preferences: prefs.result?.value || DEFAULT_PREFERENCES, generation: gen.result?.value || 0 }); tx.onabort = () => reject(tx.error); });
     const blobs = new Map<string, Blob>();
-    const notes = values.notes.map(({ syncState: _syncState, ...note }) => ({ ...note, photos: note.photos.map(photo => { blobs.set(photo.id, photo.blob); return { id: photo.id, mimeType: "image/jpeg" as const, width: 1000, height: 1000 }; }) }));
+    const notes = values.notes.map(({ syncState: _syncState, ...note }) => ({ ...note, photos: note.photos.map(photo => { blobs.set(photo.id, photo.blob); return { id: photo.id, mimeType: "image/jpeg" as const, width: photo.width ?? 1000, height: photo.height ?? 1000 }; }) }));
     return { data: snapshotSchema.parse({ notes, categories: values.categories.map(c => ({ ...c, updatedAt: c.updatedAt ?? c.createdAt })), preferences: values.preferences }), blobs, generation: values.generation };
   },
   syncMetadata: async () => (await read<{ value: SyncMetadata } | undefined>("metadata", "sync"))?.value,
   setSyncMetadata: (value: SyncMetadata) => mutate(tx => tx.objectStore("metadata").put({ key: "sync", value })),
   async replaceSnapshot(data: Snapshot, blobs: Map<string, Blob>, expectedGeneration: number, sync?: SyncMetadata) {
     snapshotSchema.parse(data);
-    const notes = data.notes.map(n => ({ ...n, syncState: "local", photos: n.photos.map(p => { const blob = blobs.get(p.id); if (!blob) throw new Error("A photo is missing. No data was changed."); return { id: p.id, blob }; }) }));
+    const notes = data.notes.map(n => ({ ...n, syncState: "local", photos: n.photos.map(p => { const blob = blobs.get(p.id); if (!blob) throw new Error("A photo is missing. No data was changed."); return { id: p.id, blob, width: p.width, height: p.height }; }) }));
     await mutate(tx => { const check = tx.objectStore("metadata").get("generation"); check.onsuccess = () => { if ((check.result?.value || 0) !== expectedGeneration) { tx.abort(); return; } tx.objectStore("notes").clear(); tx.objectStore("categories").clear(); for (const n of notes) tx.objectStore("notes").put(n); for (const c of data.categories) tx.objectStore("categories").put(c); tx.objectStore("preferences").put({ key: "user", value: data.preferences }); if (sync) tx.objectStore("metadata").put({ key: "sync", value: sync }); }; });
   },
 };

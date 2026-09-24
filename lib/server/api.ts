@@ -3,7 +3,7 @@ import { getChatGPTUser } from "../../app/chatgpt-auth";
 export class ApiError extends Error { constructor(public status: number, message: string) { super(message); } }
 export async function identity(request: Request) {
   if (request.method !== "GET" && (request.headers.get("Origin") !== new URL(request.url).origin || request.headers.get("Sec-Fetch-Site") === "cross-site")) throw new ApiError(403,"Request origin is not allowed.");
-  const user = await getChatGPTUser(); if (!user) throw new ApiError(401,"Sign in to synchronize your collection."); return user;
+  const user = await getChatGPTUser(); if (!user) throw new ApiError(401,"Sign in to synchronize your collection."); if ((request.method !== "GET" || request.headers.has("X-Memorate-Account")) && request.headers.get("X-Memorate-Account") !== user.userId) throw new ApiError(409,"Account changed during synchronization. Sign in again and retry."); return user;
 }
 export function database() { if (!env.DB || !env.BUCKET) throw new ApiError(503,"Cloud storage is not available yet. Your notes remain on this device."); return { db:env.DB, bucket:env.BUCKET }; }
 export async function bytes(request: Request, limit: number) {
