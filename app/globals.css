@@ -365,3 +365,31 @@ body { overscroll-behavior-x: none; }
 
 /* Align Settings inside the same desktop container; keep mobile gutters intact. */
 @media(min-width:701px) { .settings-view { margin-inline:auto; } }
+
+/* Keep the actual collection mounted underneath interactive detail navigation. */
+.collection-layer.is-underneath { position:fixed; width:min(100% - 48px,940px); pointer-events:none; }
+.home-view,.detail-view { animation:none; }
+.detail-navigation { position:relative; overflow:clip; z-index:2; }
+.detail-surface { min-height:calc(100dvh - 60px); background:var(--background); transition:transform 240ms cubic-bezier(.22,.7,.25,1); animation:navigate-forward 240ms cubic-bezier(.22,.7,.25,1); }
+.detail-surface.is-dragging,.detail-surface.is-leaving { animation:none; }
+@keyframes navigate-forward { from { translate:100% 0; } to { translate:0 0; } }
+[data-slot="dialog-content"],[data-slot="alert-dialog-content"],[data-slot="sheet-overlay"],[data-slot="dialog-overlay"] { animation-duration:220ms!important; animation-timing-function:cubic-bezier(.22,.7,.25,1)!important; }
+.barcode-action { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin-top:10px; color:var(--sub); font-size:13px; }
+.barcode-action .inline-link { margin:0; }
+.product-message { font-size:14px; color:var(--sub); margin:12px 0 0; }
+.barcode-dialog { width:calc(100% - 32px); max-width:430px; max-height:90dvh; overflow-y:auto; background:var(--surface); padding:22px; }
+.scanner-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.scanner-camera { position:relative; background:var(--soft); border-radius:12px; overflow:hidden; min-height:100px; display:flex; align-items:center; justify-content:center; }
+.scanner-camera video { display:none; width:100%; height:220px; object-fit:cover; }
+.scanner-camera.is-active { display:block; text-align:center; padding-bottom:12px; }
+.scanner-camera.is-active video { display:block; }
+.scanner-camera p { font-size:14px; margin:10px; }
+.scanner-guide { position:absolute; top:65px; left:8%; width:84%; height:100px; border:2px solid var(--coral); border-radius:8px; box-shadow:0 0 0 60px #0002; pointer-events:none; }
+.barcode-entry { display:flex; gap:8px; }
+.barcode-entry input { min-width:0; font-size:16px; }
+.barcode-entry .primary-button { flex-shrink:0; padding-inline:14px; }
+.barcode-existing { display:grid; gap:10px; font-size:15px; }
+.product-attribution { font-size:12px; color:var(--sub); }
+.product-attribution a { text-decoration:underline; }
+@media(max-width:700px) { .collection-layer.is-underneath { width:100%; left:0; } .detail-surface { min-height:calc(100dvh - 54px); } }
+@media(prefers-reduced-motion:reduce) { .detail-surface { animation:none!important; transition:none!important; } }

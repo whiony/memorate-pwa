@@ -1,6 +1,7 @@
 """Render the Memorate star into PWA and home screen icon sizes."""
 
 import math
+import shutil
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -41,8 +42,13 @@ for name, size, scale in [
     ("icon-192.png", 192, .86),
     ("icon-512.png", 512, .86),
     ("icon-maskable-512.png", 512, .68),
+    ("icon-maskable-192.png", 192, .68),
+    ("apple-touch-icon-152.png", 152, .86),
+    ("apple-touch-icon-167.png", 167, .86),
     ("apple-touch-icon.png", 180, .86),
 ]:
     canvas = Image.new("RGB", (size * 4, size * 4), BACKGROUND)
     ImageDraw.Draw(canvas).polygon(star_points(size * 4, scale), fill=CORAL)
     canvas.resize((size, size), Image.Resampling.LANCZOS).save(ROOT / name, optimize=True)
+
+shutil.copyfile(ROOT / "apple-touch-icon.png", ROOT.parent / "apple-touch-icon.png")

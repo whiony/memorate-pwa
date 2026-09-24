@@ -48,15 +48,17 @@ export function SheetHandle({ onClose }: { onClose: () => void }) {
   return <button type="button" className="sheet-handle" aria-label="Close sheet" onClick={onClose}><span /></button>;
 }
 
-export function EdgeBack({ onBack, children }: { onBack: () => void; children: ReactNode }) {
+export function EdgeBack({ closing, onRequestBack, onBack, children }: { closing: boolean; onRequestBack: () => void; onBack: () => void; children: ReactNode }) {
   const [offset,setOffset]=useState(0);const [dragging,setDragging]=useState(false);
   const g=useRef<{x:number;y:number;time:number;horizontal:boolean}|null>(null);
-  const suppress=useRef(false);
+  const finished=useRef(false);
+  const finish=()=>{if(!finished.current){finished.current=true;onBack();}};
+  useEffect(()=>{if(closing&&matchMedia('(prefers-reduced-motion: reduce)').matches)onBack();},[closing,onBack]);
   const reset=()=>{g.current=null;setDragging(false);setOffset(0);};
-  return <div className="detail-navigation"><div className="back-cue" aria-hidden="true">‹ All notes</div><div className="back-edge" aria-hidden="true" onPointerDown={e=>{if(e.pointerType!=="touch")return;suppress.current=false;g.current={x:e.clientX,y:e.clientY,time:e.timeStamp,horizontal:false};e.currentTarget.setPointerCapture(e.pointerId);}}
-      onPointerMove={e=>{const start=g.current;if(!start)return;const dx=e.clientX-start.x,dy=e.clientY-start.y;if(!start.horizontal && Math.max(Math.abs(dx),Math.abs(dy))>8){if(dx<=0||Math.abs(dy)>dx){reset();return;}start.horizontal=true;suppress.current=true;setDragging(true);}if(start.horizontal)setOffset(Math.min(innerWidth,Math.max(0,dx)));}}
-      onPointerUp={e=>{const start=g.current;if(start?.horizontal){const dx=e.clientX-start.x,velocity=dx/Math.max(1,e.timeStamp-start.time);if(dx>Math.min(140,innerWidth*.32)||(dx>45&&velocity>.65))onBack();}reset();}}
-      onPointerCancel={reset} onClick={e=>{if(suppress.current){e.preventDefault();e.stopPropagation();}}}/>
-    <div className="detail-surface" style={{transform:`translate3d(${offset}px,0,0)`,transition:dragging?"none":undefined}}>{children}</div>
+  return <div className="detail-navigation"><div className="back-edge" aria-hidden="true" onPointerDown={e=>{if(e.pointerType!=="touch"||closing)return;g.current={x:e.clientX,y:e.clientY,time:e.timeStamp,horizontal:false};e.currentTarget.setPointerCapture(e.pointerId);}}
+      onPointerMove={e=>{const start=g.current;if(!start)return;const dx=e.clientX-start.x,dy=e.clientY-start.y;if(!start.horizontal && Math.max(Math.abs(dx),Math.abs(dy))>8){if(dx<=0||Math.abs(dy)>dx){reset();return;}start.horizontal=true;setDragging(true);}if(start.horizontal)setOffset(Math.min(innerWidth,Math.max(0,dx)));}}
+      onPointerUp={e=>{const start=g.current;if(start?.horizontal){const dx=e.clientX-start.x,velocity=dx/Math.max(1,e.timeStamp-start.time);if(dx>Math.min(140,innerWidth*.32)||(dx>45&&velocity>.65)){g.current=null;setDragging(false);onRequestBack();return;}}reset();}}
+      onPointerCancel={reset}/>
+    <div className={`detail-surface ${closing?'is-leaving':''} ${dragging?'is-dragging':''}`} onTransitionEnd={e=>{if(e.target===e.currentTarget&&e.propertyName==='transform'&&closing)finish();}} style={{transform:closing?'translate3d(100vw,0,0)':`translate3d(${offset}px,0,0)`,transition:dragging?'none':undefined}}>{children}</div>
   </div>;
 }

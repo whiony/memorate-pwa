@@ -1,5 +1,5 @@
 const CACHE = "memorate-shell-v5";
-const STATIC = ["/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/apple-touch-icon.png"];
+const STATIC = ["/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/apple-touch-icon.png", "/apple-touch-icon.png", "/favicon.svg", "/icons/icon-maskable-192.png", "/icons/icon-maskable-512.png"];
 
 function assetURL(value) {
   if (typeof value !== "string" || value.length > 2048) return null;
