@@ -11,6 +11,14 @@ const date='2026-09-24T12:00:00.000Z';
 const note={id:'memory',title:'Keep me',comment:'Original',rating:4,price:4,currency:'EUR',categoryId:'legacy-food',date:'2026-09-24',createdAt:date,updatedAt:date,photos:[]};
 const snapshot=(categories,notes=[])=>({...structuredClone(emptySnapshot),categories,notes});
 const oldFood={...INITIAL_CATEGORIES[0],id:'legacy-food',createdAt:date};
+test('original Sites palette merges with current defaults while custom colors and names survive',()=>{
+ const colors={food:'#EBC984',clothes:'#CBBBE4',beauty:'#E7B9AF',places:'#A6D3D0',other:'#BAC5D4'};
+ const legacy=INITIAL_CATEGORIES.map(c=>({...c,id:`sites-${c.id}`,color:colors[c.id]}));
+ const [fixed]=alignDefaultCategories(snapshot([...INITIAL_CATEGORIES,...legacy,{...oldFood,id:'custom',name:'Everywhere',color:'#A6D3D0'}],legacy.map(c=>({...note,id:`note-${c.id}`,categoryId:c.id}))));
+ assert.equal(fixed.categories.length,6);assert.ok(fixed.categories.some(c=>c.id==='custom'));assert.deepEqual(fixed.notes.map(n=>n.categoryId),INITIAL_CATEGORIES.map(c=>c.id));
+ assert.deepEqual(alignDefaultCategories(fixed)[0],fixed);
+ const merged=mergeSnapshots(emptySnapshot,snapshot(INITIAL_CATEGORIES),snapshot(legacy),()=>{throw new Error('No recovery category should be created');});assert.equal(merged.snapshot.categories.length,5);assert.equal(merged.conflicts,0);
+});
 test('initialization atomically repairs default aliases and preserves notes/photos; repeated initialization is a no-op',async()=>{
  const database=await new Promise((resolve,reject)=>{const r=indexedDB.open('memorate',2);r.onupgradeneeded=()=>{for(const name of ['notes','categories','preferences','metadata'])r.result.createObjectStore(name,{keyPath:['notes','categories'].includes(name)?'id':'key'});};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
  await new Promise(resolve=>{const tx=database.transaction(['notes','categories'],'readwrite');for(const c of [...INITIAL_CATEGORIES,oldFood])tx.objectStore('categories').put(c);tx.objectStore('notes').put({...note,syncState:'local',photos:[{id:'photo',blob:new Blob(['keep photo']),width:23,height:24}]});tx.oncomplete=resolve;});database.close();

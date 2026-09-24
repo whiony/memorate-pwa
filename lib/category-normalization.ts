@@ -1,9 +1,13 @@
 import { INITIAL_CATEGORIES, type Category } from './models.ts';
 
-// Only exact built-in names AND their original colors identify legacy defaults.
+// The original Sites collection used this palette before the Rose Sand refresh.
+const LEGACY_DEFAULT_COLORS: Record<string, string> = {
+  food: '#ebc984', clothes: '#cbbbe4', beauty: '#e7b9af', places: '#a6d3d0', other: '#bac5d4',
+};
+// Only exact built-in names AND a known default color identify legacy defaults.
 // Similar names, renamed defaults and custom colors are intentionally distinct.
 function defaultKey(category: Category): string | undefined {
-  return INITIAL_CATEGORIES.find(c => c.name.toLowerCase() === category.name.trim().toLowerCase() && c.color.toLowerCase() === category.color.toLowerCase())?.id;
+  return INITIAL_CATEGORIES.find(c => c.name.toLowerCase() === category.name.trim().toLowerCase() && [c.color.toLowerCase(), LEGACY_DEFAULT_COLORS[c.id]].includes(category.color.toLowerCase()))?.id;
 }
 export function sameCategoryContent(a: Category | undefined, b: Category | undefined): boolean {
   if (!a || !b) return a === b;
