@@ -1,145 +1,59 @@
-# Memorate PWA
+# Memorate
 
-Device-local notes and photo catalog. Data is stored in IndexedDB; there is no cloud sync or account separation in this version.
+A local-first personal catalog for things you try, buy and experience. The GitHub repository is the source of truth; the existing Sites source remote is a deployment mirror of the same commits, not a separately generated app.
 
-Use Node.js >=22.13.0 and pnpm 11.25.0:
+## Development
+
+Use Node.js 24 and pnpm 11.25.0 (minimum Node 22.13).
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm dev
-pnpm test:security
-pnpm exec tsc --noEmit
+pnpm lint
+pnpm typecheck
+pnpm test
 pnpm build
+pnpm test:e2e
 pnpm start
 ```
 
-On macOS and Windows, use `pnpm install --frozen-lockfile` directly; the inherited `install:ci` shell helper requires the managed Linux environment. The empty `.openai/hosting.json` enables local builds without creating cloud bindings. Restore the original Site identity before a Sites deployment. `worker.ts` applies security headers to Worker responses, including streamed HTML.
+`test:e2e` starts the built Worker on loopback port 4175 and exercises mobile forms, offline usage, ZIP backups, touch gestures, API authorization, and synchronization between browser contexts. Install the test browser once with `pnpm exec playwright install chromium`. Browser tests use only the local D1/R2 state and disposable test identities.
 
-The original Sites starter documentation follows.
-
-# vinext-starter
-
-A clean full-stack starter running on [vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and Drizzle support.
-
-## Prerequisites
-
-- Node.js `>=22.13.0`
-- Portable: Windows, macOS, or Linux; no Bash required
-- Managed Linux: managed Linux runtime with Bash, `flock`, `curl`, `sha256sum`, and GNU `timeout`
-- Git is required only for publishing
-
-## Sites Lifecycle
-
-The Sites initializer copies the shared starter and selects managed-linux only when `SITES_MANAGED_LINUX_CONTAINER=1`; otherwise it selects portable. It saves the selection only in ignored `.sites-runtime/execution-profile.json`. Both profiles copy/configure first, then use the plugin's separate `install-dependencies.mjs` step to measure installation independently. Edit source under `app/` and follow the Sites skill for installation, preview, builds, and publishing.
-
-Run `node <plugin-root>/scripts/configure-execution-profile.mjs` only when the profile is unknown for the current checkout and environment. Profile changes do not alter tracked source or require reinstalling otherwise-valid dependencies; restart an existing preview to use the new selection. Do not commit or upload `.sites-runtime/`.
-
-This starter does not use `wrangler.jsonc`.
-
-`install:ci` runs `npm ci` once against the shared lockfile, disables parent-workspace discovery, and includes required dev/optional dependencies despite production/omit settings. Sharp defaults to prebuilt binaries unless explicitly configured otherwise. Do not overlap installers.
-
-- **Portable:** Preserve host HOME, npm cache, registry, proxy, temporary paths, retry/concurrency settings, and lifecycle-script policy. Use `--prefer-offline --no-audit --no-fund`.
-- **Managed Linux:** Use the existing project-local HOME/cache/tmp setup and Linux install lock, tarball preflight, and timeout. Restore the image-seeded npm cache only when its lockfile hash matches; retain network fallback. Builds keep their existing timeout. These helpers are not invoked by the portable profile.
-
-`scripts/sites-env.mjs` preserves the caller's HOME, npm cache, proxy, XDG, and temporary-directory configuration while defaulting Wrangler and Miniflare state to the checkout. If npm reports an unwritable cache, select a writable path with `npm_config_cache` for that install. The `dev` and `start` scripts also keep Wrangler logs inside the checkout. Generated `.sites-runtime/` and `.wrangler/` directories are disposable and ignored by Git.
-
-On portable, `npm run dev` uses `vinext dev` with HMR, starting at port 5173. Vinext records the running server in ignored `.vinext/` state, rejects an ordinary duplicate launch, and recovers stale state after a stopped process; exactly simultaneous starts can race. Pass `--port <port>` or `--hostname <host>` after `npm run dev --` when needed; keep portable previews on loopback.
-
-For browser QA on managed Linux, use `sites-preview start`. The project's dev script runs Vite and accepts the supervisor's `--host 0.0.0.0 --port 4173 --strictPort` arguments. The internal browser uses `http://terminal.local:4173/`; it is not a user-facing URL. The supervisor owns the preview lifecycle. The ignored local profile survives the supervisor's cleared process environment.
-
-The portable profile simulates ChatGPT sign-in only for loopback development requests. Visit `/signin-with-chatgpt?return_to=/` to sign in as `local_seedy` (`seedy@sites.test`, display name `Seedy`) and `/signout-with-chatgpt?return_to=/` to sign out. The development cookie preserves that identity across server restarts. Mock auth is disabled in the managed-linux profile and is not included in production builds; hosted authentication remains dispatch-owned.
-
-The Worker uses `vinext/server/fetch-handler`, including Vinext's config-aware image handling. After building, `npm start` runs that Worker locally through Wrangler on `127.0.0.1`, sharing `.wrangler/state` with dev preview and local D1 migrations; it does not deploy the site or simulate sign-in. Use the URL printed by the server. Pass `npm start -- --port <port>` to select a different built-preview port.
-
-Local previews use Miniflare's placeholder `Request.cf` metadata without a network lookup. Set `CLOUDFLARE_CF_FETCH_ENABLED=true` to opt into fetching preview metadata; this setting does not change hosted request metadata.
-
-Local tool usage metrics are disabled by default. Set `WRANGLER_SEND_METRICS=true` to opt in.
-
-## Included Shape
-
-- edit site code under `app/`
-- `app/chatgpt-auth.ts` provides optional dispatch-owned ChatGPT sign-in helpers
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/index.ts` reads the D1 binding from the Cloudflare Worker environment
-- `db/schema.ts` starts intentionally empty
-- `@cloudflare/workers-types` provides Worker types; `cloudflare-env.d.ts` declares optional `DB`/`BUCKET` bindings—update these declarations if binding names change
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
-
-## Workspace Auth Headers
-
-Signed-in visitors receive both `oai-authenticated-user-id` and `oai-authenticated-user-email`. Private Sites require every visitor to sign in; public Sites may also have anonymous visitors, for whom neither header is present.
-
-The user ID is stable for the same user on the same Site and different across Sites. Use it as the durable user key; use email and name for display or contact purposes.
-
-SIWC-authenticated workspace sites may also receive `oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty `name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by `oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const userId = requestHeaders.get("oai-authenticated-user-id");
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
-```
-
-## Optional Dispatch-Owned ChatGPT Sign-In
-
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs optional or required ChatGPT sign-in:
-
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use the returned `userId` as the stable user key for user-owned records; do not use email as a durable identifier.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send anonymous visitors through Sign in with ChatGPT.
-- In a Server Component, start sign-in with `<a href={chatGPTSignInPath(returnTo)} target="_top">`. The auth helper module is server-only; do not import it into a Client Component.
-- Do not use `fetch`, XHR, a client-side router, or a framework link that can prefetch the sign-in route. SIWC must start as a top-level navigation.
-- Never request the AuthAPI authorization endpoint directly. The dispatch-owned `/signin-with-chatgpt` route must start the SIWC flow.
-- Use `chatGPTSignOutPath(returnTo)` for browser sign-out links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because they depend on per-request identity headers.
-
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the OAuth cookies, and identity header injection. Do not implement app routes for those reserved paths. Routes that do not import and call the helper remain anonymous-compatible.
-
-SIWC establishes identity only; it does not prove workspace membership. Use the Sites hosting platform's access policy controls for workspace-wide restrictions, or enforce explicit server-side membership or allowlist checks.
-
-Use SIWC for account pages, user-specific dashboards, saved records, and write actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Local D1 migrations
-
-For a D1-backed local preview, generate SQL with `npm run db:generate`. Build once through the Sites skill's build entrypoint (or `npm run build` for standalone use) to generate `dist/server/wrangler.json`, rebuilding if bindings change. From the project root, apply each pending migration in order:
+Apply local database migrations in order before the browser suite. Build first to generate Wrangler's configuration:
 
 ```sh
-node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_example.sql
+node --import ./scripts/sites-env.mjs node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_whole_the_stranger.sql
+node --import ./scripts/sites-env.mjs node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0001_powerful_beast.sql
 ```
 
-Replace the filename with the pending migration and `DB` with your D1 binding name if different. Use `.wrangler/state`, not `.wrangler/state/v3`; Wrangler adds the versioned directories. Do not replay migrations already applied locally. This updates only the preview database; publishing applies production migrations separately.
+Do not replay migrations on a database that already has them. Local state, dependency caches, environment files, and build outputs are ignored by Git.
 
-## Diagnostic Commands
+## Data and synchronization
 
-- `npm run install:ci`: perform the one locked dependency install
-- `npm run dev`: start the Vite/Vinext development server
-- `npm run build`: build the deployable Sites artifact
-- `npm run start`: preview the built Worker locally with D1/R2 support
-- `npm run db:generate`: generate Drizzle migrations after schema changes
+The UI uses the application repository in `lib/repository.ts`. IndexedDB v2 preserves existing v1 notes, photos, categories and preferences. Local operations work without signing in or being online. Cloud operations are adapters behind `AuthProvider`, `CloudRepository`, and `SyncService`; ZIP backups use application models rather than provider-specific rows or object URLs.
 
-When using the Sites plugin, follow its skill instructions for installation, builds, and publishing. These npm commands remain available for standalone use.
+Cloud backup is opt-in in Settings. Sites Sign in with ChatGPT establishes identity through dispatch-owned headers. Every database query and object lookup is scoped to the server-authenticated owner; the browser's account header is only a consistency check against that identity. It never grants access. Do not expose the Worker outside the Sites gateway without replacing this authentication adapter. Development auth simulation is loopback-only.
 
-The portable build runs Vinext directly without a host `timeout` command. The managed-linux build uses `scripts/build-verified.sh` and its existing `SITES_BUILD_TIMEOUT` setting.
+The existing hosted Site's private access policy is preserved. Its gateway requires sign-in to open the Site, even though the app's local mode itself needs no account. Public anonymous access would require an explicit Site sharing change.
 
-## Learn More
+Sync v1 uses owner-scoped, transactionally versioned snapshots and a persistent three-way merge baseline. An unchanged record follows the other device, including deletion. Concurrent note edits preserve the cloud version and a recovered local copy. Category conflicts receive new IDs and local relationships are remapped. A concurrent edit wins over deletion. Preferences keep local changes. IDs survive ordinary sync, and immutable photos are uploaded separately to object storage. Failed uploads or stale revisions do not erase the local collection; retry merges again. Local edits made during a transfer are retained. A browser collection is bound to the first cloud owner to prevent accidental uploads to a different account; use separate browser profiles for separate accounts.
 
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+Sync runs after local edits, reconnection, foregrounding, and manual refresh. The database stores notes, categories, preferences, photo metadata, upload checksums, and the current revision. Photo bytes remain in R2 and are cached locally. Unreferenced cloud photo objects are retained for now to avoid deleting files still needed by an in-flight or offline device; automatic garbage collection is not implemented.
+
+## Portable backups
+
+Settings exports a ZIP containing `data.json` and `photos/<photo-id>.jpg`. JSON includes `backup_format_version`, `schema_version`, timestamps, complete notes and ordered photo IDs/metadata, categories, and preferences. No credentials or cloud storage URLs are exported.
+
+Import validates the ZIP directory, CRCs, decompression sizes, file paths, schema, versions, IDs and relationships before an atomic local transaction. Exact records are deduplicated; conflicting IDs are remapped instead of overwriting originals. Preferences restore automatically into an empty collection. Legacy `memorate-export` version-1 JSON backups remain importable. Backups and local data are not encrypted.
+
+Current safety limits: 256 MB ZIP, 8 MB per backup/cloud photo, 20 MB original photo selection, 12 photos per note, 2,000 notes, 500 categories, 20,000 characters per comment, and 1 MB cloud snapshot metadata. Oversized or unsupported data fails with a recoverable error, without deleting local data.
+
+## PWA and deployment
+
+Each build fingerprints the service worker from the compiled assets. Navigation stays network-first; only the explicitly marked identity-free root shell can be cached for offline launch. API/account responses are never cached by the worker. The root must remain free of server-rendered personal data; remove its marker if that changes. Update checks run on launch, foregrounding and reconnect. A waiting worker activates through the update prompt, which is disabled while the editor is open. The first worker installation does not interrupt the page.
+
+The hosting manifest identifies the existing Memorate Site and declares logical `DB` and `BUCKET` bindings. Drizzle migrations are versioned in `drizzle/` and applied by Sites when publishing. Keep applied migrations immutable.
+
+The release sequence is: edit this repository → local checks and workflow verification → commit → push GitHub → push the same source commit to Sites with a short-lived credential → save the matching build archive → deploy and confirm success. Sites credentials stay in process memory/stdin and are never written into Git configuration, files, or URLs. Production uses the existing Site URL and access policy.
+
+Real iOS Home Screen behavior still requires device testing; desktop mobile emulation cannot fully verify iOS file-picker, keyboard, standalone, or OS storage-eviction behavior.

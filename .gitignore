@@ -13,3 +13,5 @@ out/
 .DS_Store
 coverage/
 next-env.d.ts
+test-results/
+playwright-report/

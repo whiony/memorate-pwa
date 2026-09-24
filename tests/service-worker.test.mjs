@@ -47,8 +47,10 @@ test('private and session-dependent responses are never stored', async () => {
     const w = worker(); w.respond(new Response('secret', { headers })); await w.message(['/assets/app.js']); assert.equal(w.stored.size, 0);
   }
 });
-test('installation fetches anonymous shell without following redirects; upgrades delete old cache', async () => {
-  const w = worker(); w.respond(new Response('<script src="/assets/app.js"></script>', { headers: { 'Content-Type': 'text/html' } }));
-  await w.run('install'); assert.equal(w.calls[0][1].credentials, 'omit'); assert.equal(w.calls[0][1].redirect, 'error'); assert.ok(w.stored.has('/'));
+test('installation fetches explicitly marked identity-free shell without following redirects; upgrades delete old cache', async () => {
+  const w = worker(); w.respond(new Response('<script src="/assets/app.js"></script>', { headers: { 'Content-Type': 'text/html', 'X-Memorate-Offline-Shell': '1' } }));
+  await w.run('install'); assert.equal(w.calls[0][1].credentials, 'same-origin'); assert.equal(w.calls[0][1].redirect, 'error'); assert.ok(w.stored.has('/'));
   await w.run('activate'); assert.ok(w.calls.some(call => call[0] === 'delete' && call[1] === 'memorate-shell-v3'));
 });
+
+test('installation never stores an unmarked login or personalized page', async () => { const w=worker();w.respond(new Response('private account',{headers:{'Content-Type':'text/html'}}));await w.run('install');assert.equal(w.stored.size,0); });

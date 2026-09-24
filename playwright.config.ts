@@ -1,0 +1,2 @@
+import { defineConfig } from "@playwright/test";
+export default defineConfig({testDir:"./tests/e2e",timeout:60000,workers:1,webServer:{command:`${process.execPath} --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0 --port 4175`,url:"http://127.0.0.1:4175",reuseExistingServer:false,timeout:60000},use:{baseURL:"http://127.0.0.1:4175",browserName:"chromium",trace:"retain-on-failure"},reporter:"list"});
