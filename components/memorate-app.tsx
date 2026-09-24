@@ -6,7 +6,7 @@ import { useCloudSync } from "@/hooks/use-cloud-sync";
 import { normalizePrice } from "@/lib/data-schema";
 import { useAppUpdate } from "@/hooks/use-app-update";
 
-import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useId, useState } from "react";
 import { ArrowLeft, CalendarDays, Camera, ChevronDown, ChevronLeft, ChevronRight,  Ellipsis, Minus, Plus, Search, Settings2, SlidersHorizontal, Star, Trash2, X } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -141,10 +141,16 @@ function NoteEditor({ open, note, categories, currency, onClose, onSave, onAddCa
 }
 
 function NoteCard({ note, category, onOpen }: { note: Note; category?: Category; onOpen: () => void }) {
+  const waveId = useId();
   return <button className="note-card" onClick={onOpen} type="button">
-    <div className="card-top"><span className="category-label"><span className="category-mark" style={{ background: category?.color || "#BCA9A2" }} />{category?.name || "Uncategorized"}</span></div>
-    <div className="card-body"><div className="note-card-content"><div className="card-main"><h2>{note.title}</h2><span className={`numeric-rating ${note.rating ? "" : "unrated"}`}>{note.rating ? <>{note.rating.toFixed(1)} <BrandStar className="rating-mark" /></> : "Not rated"}</span>{note.comment && <p className="card-preview">{note.comment}</p>}</div></div>{note.photos[0] && <span className="card-photo-frame"><PhotoView blob={note.photos[0].blob} className="card-photo" alt="" /></span>}</div>
-    <div className="card-metadata"><span className="card-date">{prettyDate(note.date)}</span>{note.price != null && <span className="card-price">{money(note.price, note.currency)}</span>}</div>
+    <div className="card-body"><div className="note-card-content">
+      <div className="card-top"><span className="category-label"><span className="category-mark" style={{ background: category?.color || "#BCA9A2" }} />{category?.name || "Uncategorized"}</span></div>
+      <div className="card-main"><h2>{note.title}</h2><span className={`numeric-rating ${note.rating ? "" : "unrated"}`}>{note.rating ? <>{note.rating.toFixed(1)} <BrandStar className="rating-mark" /></> : "Not rated"}</span>{note.comment && <p className="card-preview">{note.comment}</p>}</div>
+    </div>{note.photos[0] && <span className="card-photo-frame"><PhotoView blob={note.photos[0].blob} className="card-photo" alt="" />{note.photos.length > 1 && <span className="card-photo-count" aria-label={`${note.photos.length} photos`}>+{note.photos.length - 1}</span>}</span>}</div>
+    <div className="card-metadata">
+      <svg className="card-wave" width="100%" height="14" aria-hidden="true"><defs><pattern id={waveId} width="64" height="14" patternUnits="userSpaceOnUse"><path d="M0 2 C11 2 21 10 32 10 C43 10 53 2 64 2 V14 H0 Z" fill="var(--surface)"/><path d="M0 2 C11 2 21 10 32 10 C43 10 53 2 64 2" fill="none" stroke="var(--line)" strokeWidth="0.8"/></pattern></defs><rect width="100%" height="14" fill={`url(#${waveId})`}/></svg>
+      <span className="card-date">{prettyDate(note.date)}</span>{note.price != null && <span className="card-price">{money(note.price, note.currency)}</span>}
+    </div>
   </button>;
 }
 

@@ -21,9 +21,21 @@ test('mobile controls prevent focus autozoom and dates keep full years at narrow
 });
 test('desktop drawer direction, dismissals and editorial hover keep cards stable',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await page.goto('/');await note(page);const card=page.locator('.note-card');await expect(card.locator('.card-metadata .card-date')).toContainText('2026');await expect(card.locator('.card-top .card-date')).toHaveCount(0);
- await card.hover();const star=card.locator('.rating-mark');expect(await star.evaluate(e=>getComputedStyle(e).animationDuration)).toBe('0.56s');expect(await star.evaluate(e=>getComputedStyle(e).animationIterationCount)).toBe('1');await expect(card).toHaveCSS('transform','none');await expect(card).toHaveCSS('box-shadow','none');
- await expect.poll(()=>card.locator('.card-photo-frame').evaluate(e=>new DOMMatrix(getComputedStyle(e).transform).b)).toBeGreaterThan(.01);const matrix=await card.locator('.card-photo-frame').evaluate(e=>{const m=new DOMMatrix(getComputedStyle(e).transform);return Math.hypot(m.a,m.b);});expect(matrix).toBeCloseTo(1,3);await expect(card.locator('.card-photo')).toHaveCSS('transform','none');
+ await card.hover();const star=card.locator('.rating-mark');expect(await star.evaluate(e=>getComputedStyle(e).animationDuration)).toBe('1.2s');expect(await star.evaluate(e=>getComputedStyle(e).animationIterationCount)).toBe('1');await expect(card).toHaveCSS('transform','none');await expect(card).toHaveCSS('box-shadow','none');
+ await expect(card.locator('.card-photo-frame')).toHaveCSS('border-radius','50%');
+ const photoBox=(await card.locator('.card-photo-frame').boundingBox())!;expect(photoBox.width).toBe(130);expect(photoBox.height).toBe(130);
+ const motion=await card.evaluate(e=>{
+   const elements=['.rating-mark','.card-wave','.card-photo'].map(selector=>e.querySelector(selector)!);
+   return elements.map(element=>{const animation=element.getAnimations()[0];animation.pause();animation.currentTime=600;const m=new DOMMatrix(getComputedStyle(element).transform);return {duration:animation.effect!.getTiming().duration,iterations:animation.effect!.getTiming().iterations,scale:Math.hypot(m.a,m.b),x:m.m41,rotation:m.b};});
+ });
+ expect(motion.every(m=>m.duration===1200&&m.iterations===1)).toBeTruthy();expect(motion[0].scale).toBeCloseTo(1.5,2);expect(motion[1].x).toBeGreaterThan(0);expect(motion[1].x).toBeLessThan(64);expect(motion[2].scale).toBeCloseTo(1,3);expect(motion[2].rotation).toBeGreaterThan(0);
+ await card.evaluate(e=>e.getAnimations({subtree:true}).forEach(a=>a.finish()));
+ await expect(card.locator('.card-photo')).toHaveCSS('transform','none');await expect(card.locator('.card-wave')).toHaveCSS('transform','none');
+ expect(await card.evaluate(e=>e.getAnimations({subtree:true}).some(a=>a.playState==='running'))).toBeFalsy();
+ expect(await card.locator('.card-metadata').evaluate(e=>getComputedStyle(e).backgroundColor)).toBe(await card.evaluate(e=>getComputedStyle(e).backgroundColor));
+ for(const width of [320,390,700,720,1440]){await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();const centered=await card.evaluate(e=>{const body=e.querySelector('.card-body')!;const rect=body.getBoundingClientRect(),photo=e.querySelector('.card-photo-frame')!.getBoundingClientRect(),css=getComputedStyle(body);const top=rect.top+parseFloat(css.paddingTop),bottom=rect.bottom-parseFloat(css.paddingBottom);return Math.abs((top+bottom)/2-(photo.top+photo.height/2));});expect(centered).toBeLessThan(1);}
+ await page.setViewportSize({width:1440,height:900});
  await page.getByRole('button',{name:'Filters and sort',exact:true}).click();await expect(page.locator('.filter-sheet')).toHaveCSS('animation-name','drawer-in');const box=(await page.locator('.filter-sheet').boundingBox())!;expect(box.width).toBeGreaterThanOrEqual(360);expect(box.width).toBeLessThanOrEqual(440);await expect(page.getByRole('button',{name:'Close sheet'})).toBeHidden();await page.keyboard.press('Escape');await expect(page.locator('.filter-sheet')).toBeHidden();
  await page.getByRole('button',{name:'Filters and sort',exact:true}).click();await page.locator('[data-slot="sheet-overlay"]').click({position:{x:100,y:100}});await expect(page.locator('.filter-sheet')).toBeHidden();
- await page.emulateMedia({reducedMotion:'reduce'});await card.hover();await expect(star).toHaveCSS('animation-name','none');
+ await page.emulateMedia({reducedMotion:'reduce'});await card.hover();await expect(star).toHaveCSS('animation-name','none');await expect(card.locator('.card-wave')).toHaveCSS('animation-name','none');await expect(card.locator('.card-photo')).toHaveCSS('animation-name','none');
 });
