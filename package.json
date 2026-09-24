@@ -15,7 +15,8 @@
     "test:security": "node --experimental-strip-types --test tests/service-worker.test.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "package:sites": "node scripts/package-sites.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

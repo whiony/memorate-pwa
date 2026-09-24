@@ -54,6 +54,8 @@ Each build fingerprints the service worker from the compiled assets. Navigation 
 
 The hosting manifest identifies the existing Memorate Site and declares logical `DB` and `BUCKET` bindings. Drizzle migrations are versioned in `drizzle/` and applied by Sites when publishing. Keep applied migrations immutable.
 
+`pnpm package:sites` packages the existing build with its Worker/asset paths and versioned SQL migrations. It contains no source credentials or local database state.
+
 The release sequence is: edit this repository → local checks and workflow verification → commit → push GitHub → push the same source commit to Sites with a short-lived credential → save the matching build archive → deploy and confirm success. Sites credentials stay in process memory/stdin and are never written into Git configuration, files, or URLs. Production uses the existing Site URL and access policy.
 
 Real iOS Home Screen behavior still requires device testing; desktop mobile emulation cannot fully verify iOS file-picker, keyboard, standalone, or OS storage-eviction behavior.
