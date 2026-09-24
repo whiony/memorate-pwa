@@ -316,9 +316,6 @@ body { overscroll-behavior-x: none; }
 .sync-warning { position:fixed; z-index:40; bottom:calc(85px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); width:max-content; max-width:90vw; padding:10px 14px; border:1px solid var(--line); border-radius:10px; background:var(--surface); color:var(--sub); font-size:12px; }
 .sync-warning button { color:var(--coral-strong); font-weight:650; margin-left:8px; }
 @media(max-width:700px) {
-  /* Font sizes, not viewport restrictions, prevent iOS focus auto-zoom. */
-  input:not([type="file"]):not([type="range"]),textarea,select,.field-select { font-size:16px!important; }
-  .title-input { font-size:22px!important; }
   .card-metadata { padding:5px 15px 13px; }
   .card-photo-frame { margin-right:12px; }
   .responsive-sheet[data-state="open"] { animation-name:bottom-in; }
@@ -332,7 +329,8 @@ body { overscroll-behavior-x: none; }
  .responsive-sheet,.home-view,.detail-view,.action-menu { animation:none!important; }
  .note-card:hover .card-photo-frame { transform:none; }
 }
+/* Font sizes, not viewport restrictions, prevent iOS focus auto-zoom. */
 @media(max-width:700px),(pointer:coarse) {
- .responsive-sheet input:not([type="file"]):not([type="range"]),.responsive-sheet textarea,.responsive-sheet .form-grid .category-select,.responsive-sheet .field-select,.settings-view input,.search-box input { font-size:16px!important; }
+ .responsive-sheet input:not([type="file"]):not([type="range"]):not(.title-input),.responsive-sheet textarea,.responsive-sheet .form-grid .category-select,.responsive-sheet .field-select,.settings-view input,.search-box input { font-size:16px!important; }
  .responsive-sheet .title-input { font-size:22px!important; }
 }
