@@ -1,4 +1,4 @@
-const CACHE = "memorate-shell-v4";
+const CACHE = "memorate-shell-v5";
 const STATIC = ["/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/apple-touch-icon.png"];
 
 function assetURL(value) {
@@ -28,15 +28,18 @@ async function precache(cache, value) {
 self.addEventListener("install", event => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    // Fetch only the anonymous root shell; never cache redirected sign-in pages.
-    const response = await fetch("/", { credentials: "omit", redirect: "error" });
-    if (cacheable(response) && response.headers.get("Content-Type")?.includes("text/html")) {
+    // The private Sites gateway needs the session cookie even though the root
+    // shell has no server-rendered identity or collection data. Only the app's
+    // explicit invariant-shell marker may authorize this cache; never auth pages.
+    const response = await fetch("/", { credentials: "same-origin", redirect: "error" });
+    const shell = response.ok && !response.redirected && response.headers.get("X-Memorate-Offline-Shell") === "1" && !response.headers.has("Set-Cookie");
+    if (shell && response.headers.get("Content-Type")?.includes("text/html")) {
       await cache.put("/", response.clone());
       const html = await response.text();
       const paths = [...html.matchAll(/(?:src|href)="([^"#]+)"/g)].map(match => match[1]);
       await Promise.allSettled([...new Set([...STATIC, ...paths])].slice(0, 128).map(path => precache(cache, path)));
     }
-    await self.skipWaiting();
+    // Wait for explicit activation so an open editor is never interrupted.
   })());
 });
 self.addEventListener("activate", event => {
@@ -46,6 +49,7 @@ self.addEventListener("activate", event => {
   })());
 });
 self.addEventListener("message", event => {
+  if (event.data?.type === "ACTIVATE") { event.waitUntil(self.skipWaiting()); return; }
   if (event.data?.type !== "PRECACHE" || !Array.isArray(event.data.assets) || event.data.assets.length > 128) return;
   event.waitUntil((async () => {
     const client = event.source?.id && await self.clients.get(event.source.id);

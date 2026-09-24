@@ -1,4 +1,5 @@
 import vinext from "vinext";
+import { pwaVersion } from "./build/pwa-plugin";
 import { defineConfig } from "vite";
 import hostingConfig from "./.openai/hosting.json";
 import { readExecutionProfile } from "./scripts/execution-profile.mjs";
@@ -57,6 +58,7 @@ export default defineConfig(async () => {
     },
     plugins: [
       vinext(),
+      pwaVersion(),
       sites({ mockAuth: !managedLinux }),
       cloudflare({
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },

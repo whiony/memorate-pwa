@@ -17,15 +17,18 @@ function distance(a: string, b: string, max: number): number {
   return prev[b.length];
 }
 
+const searchCache = new WeakMap<Note, {category:string;haystack:string;words:string[]}>();
+
 export function matchesNote(note: Note, categories: Category[], query: string): boolean {
   const terms = normalize(query).split(" ").filter(Boolean);
   if (!terms.length) return true;
   const category = categories.find(item => item.id === note.categoryId)?.name || "uncategorized";
-  const haystack = normalize(`${note.title} ${category} ${note.comment}`);
-  const words = haystack.split(" ");
+  let cached = searchCache.get(note);
+  if (!cached || cached.category !== category) { const haystack = normalize(`${note.title} ${category} ${note.comment}`); cached = { category, haystack, words: haystack.split(" ") }; searchCache.set(note,cached); }
+  const {haystack,words} = cached;
   return terms.every(term => haystack.includes(term) || words.some(word => {
     if (word.startsWith(term)) return true;
-    const max = term.length >= 5 ? 2 : term.length >= 4 ? 1 : 0;
+    const max = term.length > 64 ? 0 : term.length >= 5 ? 2 : term.length >= 4 ? 1 : 0;
     return max > 0 && distance(term, word.slice(0, Math.max(term.length, Math.min(word.length, term.length + 1))), max) <= max;
   }));
 }
