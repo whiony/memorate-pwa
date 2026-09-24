@@ -1,3 +1,4 @@
+import { alignDefaultCategories, sameCategoryContent } from "./category-normalization.ts";
 import { DEFAULT_PREFERENCES, INITIAL_CATEGORIES, type Category, type Note, type UserPreferences } from "./models.ts";
 import { newId } from "./id.ts";
 import { snapshotSchema, type Snapshot } from "./data-schema.ts";
@@ -33,7 +34,38 @@ async function mutate(work: (tx: IDBTransaction) => void): Promise<void> {
 }
 export const repository = {
   async initialize() {
-    if (!(await read("preferences", "initialized"))) await mutate(tx => { const store = tx.objectStore("categories"); const count = store.count(); count.onsuccess = () => { if (!count.result) for (const c of INITIAL_CATEGORIES) store.put(c); }; tx.objectStore("preferences").put({ key: "initialized", value: true }); });
+    const database = await db();
+    await new Promise<void>((resolve,reject) => {
+      const tx = database.transaction(["notes","categories","preferences","metadata"], "readwrite");
+      const initialized = tx.objectStore("preferences").get("initialized");
+      const request = tx.objectStore("categories").getAll();
+      let changed = false;
+      request.onsuccess = () => {
+        const existing: Category[] = request.result;
+        const [repaired] = alignDefaultCategories({ categories: existing, notes: existing.map(c => ({categoryId:c.id})) });
+        const aliases = new Map(existing.map((c,i) => [c.id,repaired.notes[i].categoryId!]));
+        if (!initialized.result) {
+          if (!existing.length) for (const c of INITIAL_CATEGORIES) tx.objectStore("categories").put(c);
+          tx.objectStore("preferences").put({key:"initialized",value:true}); changed = true;
+        }
+        const removed = existing.filter(c => aliases.get(c.id) !== c.id);
+        if (removed.length) {
+          changed = true;
+          for (const c of repaired.categories) tx.objectStore("categories").put(c);
+          const cursor = tx.objectStore("notes").openCursor();
+          cursor.onsuccess = () => {
+            const row = cursor.result; if (!row) return;
+            const target = aliases.get(row.value.categoryId);
+            if (target && target !== row.value.categoryId) row.update({...row.value,categoryId:target});
+            row.continue();
+          };
+          for (const c of removed) tx.objectStore("categories").delete(c.id);
+        }
+        if (changed) { const gen = tx.objectStore("metadata").get("generation"); gen.onsuccess = () => tx.objectStore("metadata").put({key:"generation",value:(gen.result?.value||0)+1}); }
+      };
+      tx.oncomplete = () => { if (changed && typeof window !== "undefined") window.dispatchEvent(new Event("memorate-change")); resolve(); };
+      tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
+    });
     return { notes: await this.notes(), categories: await this.categories(), preferences: await this.preferences() };
   },
   notes: () => read<Note[]>("notes"),
@@ -55,7 +87,11 @@ export const repository = {
     return saved;
   },
   deleteNote: (id: string) => mutate(tx => { tx.objectStore("notes").delete(id); }),
-  saveCategory: (category: Category) => mutate(tx => tx.objectStore("categories").put({ ...category, updatedAt: new Date().toISOString() })),
+  async saveCategory(category: Category) {
+    const existing = await read<Category | undefined>("categories", category.id);
+    if (sameCategoryContent(existing, category)) return;
+    await mutate(tx => tx.objectStore("categories").put({ ...category, updatedAt: new Date().toISOString() }));
+  },
   deleteCategory: (id: string) => mutate(tx => { tx.objectStore("categories").delete(id); const request = tx.objectStore("notes").openCursor(); request.onsuccess = () => { const cursor = request.result; if (!cursor) return; if (cursor.value.categoryId === id) cursor.update({ ...cursor.value, categoryId: null, updatedAt: new Date().toISOString() }); cursor.continue(); }; }),
   savePreferences: (value: UserPreferences) => mutate(tx => tx.objectStore("preferences").put({ key: "user", value })),
   async getPhoto(id: string) { for (const note of await this.notes()) { const photo = note.photos.find(p => p.id === id); if (photo) return photo.blob; } },
@@ -71,6 +107,7 @@ export const repository = {
   setSyncMetadata: (value: SyncMetadata) => mutate(tx => tx.objectStore("metadata").put({ key: "sync", value })),
   async replaceSnapshot(data: Snapshot, blobs: Map<string, Blob>, expectedGeneration: number, sync?: SyncMetadata) {
     snapshotSchema.parse(data);
+    [data] = alignDefaultCategories(data);
     const notes = data.notes.map(n => ({ ...n, syncState: "local", photos: n.photos.map(p => { const blob = blobs.get(p.id); if (!blob) throw new Error("A photo is missing. No data was changed."); return { id: p.id, blob, width: p.width, height: p.height }; }) }));
     await mutate(tx => { const check = tx.objectStore("metadata").get("generation"); check.onsuccess = () => { if ((check.result?.value || 0) !== expectedGeneration) { tx.abort(); return; } tx.objectStore("notes").clear(); tx.objectStore("categories").clear(); for (const n of notes) tx.objectStore("notes").put(n); for (const c of data.categories) tx.objectStore("categories").put(c); tx.objectStore("preferences").put({ key: "user", value: data.preferences }); if (sync) tx.objectStore("metadata").put({ key: "sync", value: sync }); }; });
   },

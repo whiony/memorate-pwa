@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { alignDefaultCategories } from "@/lib/category-normalization";
 import { snapshotSchema, type Snapshot } from "@/lib/data-schema";
 import { boundary, identity, database, bytes, json, ApiError, photoKey } from "@/lib/server/api";
 export const dynamic = "force-dynamic";
@@ -18,7 +19,8 @@ export const GET = (request: Request) => boundary(async()=>{
 const payloadSchema=z.object({revision:z.number().int().min(0),data:snapshotSchema}).strict();
 export const POST = (request: Request) => boundary(async()=>{
   const {userId:owner}=await identity(request),{db}=database();
-  const {revision,data}=payloadSchema.parse(JSON.parse(new TextDecoder().decode(await bytes(request,1024*1024))));
+  const {revision,data:incoming}=payloadSchema.parse(JSON.parse(new TextDecoder().decode(await bytes(request,1024*1024))));
+  const [data]=alignDefaultCategories(incoming);
   const photos: Array<Snapshot["notes"][number]["photos"][number]&{noteId:string;sortOrder:number;storageKey:string;createdAt:string;updatedAt:string}>=[];
   const ids=[...new Set(data.notes.flatMap(n=>n.photos.map(p=>p.id)))];
   const existing=await db.prepare("SELECT id FROM photo_objects WHERE owner_id = ? AND id IN (SELECT value FROM json_each(?))").bind(owner,JSON.stringify(ids)).all();

@@ -362,3 +362,6 @@ body { overscroll-behavior-x: none; }
 @media(prefers-reduced-motion:reduce) {
  .note-card .rating-mark,.note-card .card-photo,.note-card .card-wave { animation:none!important; }
 }
+
+/* Align Settings inside the same desktop container; keep mobile gutters intact. */
+@media(min-width:701px) { .settings-view { margin-inline:auto; } }

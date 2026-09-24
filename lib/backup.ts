@@ -1,3 +1,4 @@
+import { alignDefaultCategories, sameCategoryContent } from "./category-normalization.ts";
 import { Zip, ZipPassThrough, Unzip, UnzipInflate } from "fflate";
 import { snapshotSchema, type Snapshot } from "./data-schema.ts";
 import { repository } from "./repository.ts";
@@ -79,8 +80,9 @@ async function parseLegacy(file: Blob) {
   return { data: snapshotSchema.parse({ notes, categories: raw.categories, preferences: raw.preferences }), blobs };
 }
 export function mergeBackup(existing: Snapshot, incoming: Snapshot, makeId = newId): Snapshot {
+  [existing,incoming] = alignDefaultCategories(existing,incoming);
   const categories = [...existing.categories], notes = [...existing.notes]; const categoryIds = new Map<string,string>();
-  for (const c of incoming.categories) { const old = categories.find(x => x.id === c.id); if (old && JSON.stringify(old) === JSON.stringify(c)) { categoryIds.set(c.id,c.id); continue; } const id = old ? makeId() : c.id; categories.push({...c,id}); categoryIds.set(c.id,id); }
+  for (const c of incoming.categories) { const old = categories.find(x => x.id === c.id); if (old && sameCategoryContent(old,c)) { categoryIds.set(c.id,c.id); continue; } const id = old ? makeId() : c.id; categories.push({...c,id}); categoryIds.set(c.id,id); }
   for (const n of incoming.notes) { const next = {...n,categoryId:n.categoryId ? categoryIds.get(n.categoryId)! : null}; const old = notes.find(x=>x.id===n.id); if (old && JSON.stringify(old) === JSON.stringify(next)) continue; notes.push({...next,id:old ? makeId() : n.id}); }
   return snapshotSchema.parse({notes,categories,preferences: existing.notes.length || existing.categories.length ? existing.preferences : incoming.preferences});
 }
