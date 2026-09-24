@@ -15,8 +15,6 @@ pnpm start
 
 On macOS and Windows, use `pnpm install --frozen-lockfile` directly; the inherited `install:ci` shell helper requires the managed Linux environment. The empty `.openai/hosting.json` enables local builds without creating cloud bindings. Restore the original Site identity before a Sites deployment. `worker.ts` applies security headers to Worker responses, including streamed HTML.
 
-See [SECURITY-REVIEW.md](SECURITY-REVIEW.md) for findings, fixes, checks and remaining boundaries.
-
 The original Sites starter documentation follows.
 
 # vinext-starter
