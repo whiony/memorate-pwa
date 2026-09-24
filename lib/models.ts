@@ -13,7 +13,7 @@ export type Note = {
   updatedAt: string;
   syncState: "local" | "pending";
 };
-export type Category = { id: string; name: string; color: string; createdAt: string };
+export type Category = { id: string; name: string; color: string; createdAt: string; updatedAt?: string };
 export type ThemePreference = "system" | "light" | "dark" | "amoled";
 export type UserPreferences = { theme: ThemePreference; defaultCurrency: string };
 

@@ -1,4 +1,6 @@
-// Intentionally empty by default.
-// Add Drizzle tables here when the site actually needs a database.
-// See examples/d1/db/schema.ts for an opt-in example.
-export {};
+import { sqliteTable, text, integer, real, primaryKey } from "drizzle-orm/sqlite-core";
+export const syncState = sqliteTable("sync_state", { ownerId: text("owner_id").primaryKey(), revision: integer("revision").notNull().default(0), mutationId: text("mutation_id").notNull().default("") });
+export const categories = sqliteTable("categories", { ownerId: text("owner_id").notNull(), id: text("id").notNull(), name: text("name").notNull(), color: text("color").notNull(), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull() }, t => [primaryKey({columns:[t.ownerId,t.id]})]);
+export const notes = sqliteTable("notes", { ownerId: text("owner_id").notNull(), id: text("id").notNull(), title: text("title").notNull(), comment: text("comment").notNull(), rating: integer("rating"), price: real("price"), currency: text("currency").notNull(), categoryId: text("category_id"), noteDate: text("note_date").notNull(), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull() }, t => [primaryKey({columns:[t.ownerId,t.id]})]);
+export const photos = sqliteTable("photos", { ownerId: text("owner_id").notNull(), noteId: text("note_id").notNull(), id: text("id").notNull(), storageKey: text("storage_key").notNull(), sortOrder: integer("sort_order").notNull(), width: integer("width").notNull(), height: integer("height").notNull(), mimeType: text("mime_type").notNull(), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull() }, t=>[primaryKey({columns:[t.ownerId,t.noteId,t.id]})]);
+export const preferences = sqliteTable("preferences", { ownerId: text("owner_id").primaryKey(), theme: text("theme").notNull(), defaultCurrency: text("default_currency").notNull(), updatedAt: text("updated_at").notNull() });
