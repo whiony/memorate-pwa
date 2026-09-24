@@ -5,7 +5,8 @@ import { newId } from "./id.ts";
 export type Session = { user: {id:string;name:string} | null };
 export interface AuthProvider { session(): Promise<Session> }
 export interface CloudRepository { read(owner:string): Promise<{revision:number;data:Snapshot}>; write(revision:number,data:Snapshot,owner:string): Promise<void>; uploadPhoto(id:string,blob:Blob,owner:string):Promise<void>; downloadPhoto(id:string,owner:string):Promise<Blob> }
-async function checked(response:Response) { if(!response.ok) { const data=await response.json().catch(()=>({})) as {error?:string}; throw new Error(data.error || "Cloud is unavailable; your local notes are safe."); } return response; }
+class CloudError extends Error { readonly status:number; constructor(message:string,status:number){super(message);this.status=status;} }
+async function checked(response:Response) { if(!response.ok) { const data=await response.json().catch(()=>({})) as {error?:string}; throw new CloudError(data.error || "Cloud is unavailable; your local notes are safe.",response.status); } return response; }
 export const authProvider:AuthProvider = { session:async()=> (await checked(await fetch("/api/session",{cache:"no-store"}))).json() };
 const cloud:CloudRepository = {
   async read(owner){const value=await (await checked(await fetch("/api/sync",{cache:"no-store",headers:{"X-Memorate-Account":owner}}))).json() as {revision:number;data:unknown};return {revision:value.revision,data:snapshotSchema.parse(value.data)};},
@@ -14,10 +15,16 @@ const cloud:CloudRepository = {
   async downloadPhoto(id,owner){return (await checked(await fetch(`/api/photos/${encodeURIComponent(id)}`,{cache:"no-store",headers:{"X-Memorate-Account":owner}}))).blob();},
 };
 export class SyncService {
-  private running:Promise<{conflicts:number;pending:boolean}>|null=null;
+  private running:Promise<{conflicts:number;pending:boolean;changed:boolean}>|null=null;
   private remote: CloudRepository; private auth: AuthProvider;
   constructor(remote:CloudRepository=cloud,auth:AuthProvider=authProvider){this.remote=remote;this.auth=auth;}
-  sync(): Promise<{conflicts:number;pending:boolean}> { if(this.running)return this.running; const execute=async()=>{if(typeof navigator!=="undefined" && navigator.locks)return await navigator.locks.request("memorate-sync",()=>this.perform());return await this.perform();};const pending=execute().finally(()=>{this.running=null;});this.running=pending;return pending; }
+  sync(): Promise<{conflicts:number;pending:boolean;changed:boolean}> { if(this.running)return this.running; const execute=async()=>{if(typeof navigator!=="undefined" && navigator.locks)return await navigator.locks.request("memorate-sync",()=>this.retry());return await this.retry();};const pending=execute().finally(()=>{this.running=null;});this.running=pending;return pending; }
+  private async retry(){
+    for(let attempt=0;;attempt++)try{return await this.perform();}catch(error){
+      if(!(error instanceof CloudError) || error.status!==409 || attempt>=2)throw error;
+      await new Promise(resolve=>setTimeout(resolve,100*(attempt+1)));
+    }
+  }
   private async perform(){
     const {user}=await this.auth.session();if(!user)throw new Error("Sign in before enabling cloud backup.");
     let meta=await repository.syncMetadata();
@@ -29,14 +36,18 @@ export class SyncService {
     for(const n of merged.snapshot.notes)for(const p of n.photos){if(!local.blobs.has(p.id))local.blobs.set(p.id,await this.remote.downloadPhoto(p.id,user.id)); if(!remotePhotos.has(p.id)){await this.remote.uploadPhoto(p.id,local.blobs.get(p.id)!,user.id);remotePhotos.add(p.id);}}
     // A second session check protects a sign-out/account switch during transfers.
     if((await this.auth.session()).user?.id!==user.id)throw new Error("Account changed during sync. Retry after signing in.");
-    await this.remote.write(remote.revision,merged.snapshot,user.id);
+    if(!sameSnapshot(remote.data,merged.snapshot))await this.remote.write(remote.revision,merged.snapshot,user.id);
     for(let attempt=0;attempt<4;attempt++){
       const current=await repository.snapshot();
       const final=current.generation===local.generation ? merged.snapshot : mergeSnapshots(local.data,current.data,merged.snapshot,newId).snapshot;
       const blobs=new Map([...local.blobs,...current.blobs]);
-      try {await repository.replaceSnapshot(final,blobs,current.generation,{owner:user.id,base:merged.snapshot,syncedAt:new Date().toISOString()});return {conflicts:merged.conflicts,pending:JSON.stringify(final)!==JSON.stringify(merged.snapshot)};} catch(error){if(attempt===3)throw error;}
+      try {await repository.replaceSnapshot(final,blobs,current.generation,{owner:user.id,base:merged.snapshot,syncedAt:new Date().toISOString()});return {conflicts:merged.conflicts,pending:!sameSnapshot(final,merged.snapshot),changed:!sameSnapshot(current.data,final)};} catch(error){if(attempt===3)throw error;}
     }
-    return {conflicts:merged.conflicts,pending:true};
+    return {conflicts:merged.conflicts,pending:true,changed:true};
   }
+}
+function sameSnapshot(a:Snapshot,b:Snapshot){
+  const canonical=(value:Snapshot)=>JSON.stringify(snapshotSchema.parse({...value,notes:[...value.notes].sort((x,y)=>x.id.localeCompare(y.id)),categories:[...value.categories].sort((x,y)=>x.id.localeCompare(y.id))}));
+  return canonical(a)===canonical(b);
 }
 export const syncService=new SyncService();
