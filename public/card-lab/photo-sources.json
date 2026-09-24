@@ -1,0 +1,22 @@
+{
+  "tool": "Built-in image_gen",
+  "purpose": "Synthetic personal-phone-style mock photos for card lab only",
+  "assets": [
+    {
+      "file": "cafe.png",
+      "prompt": "Use case: photorealistic-natural. Asset: mock personal phone photo for a private design lab, square. Casual imperfect smartphone snapshot, uneven ordinary lighting, slightly crooked framing, real everyday clutter. No polished commercial stock, no studio lighting, no text overlays or borders. Subject: a half-eaten pastry on a small plate on a cafe table, crumpled napkin and edge of coffee cup"
+    },
+    {
+      "file": "cream.png",
+      "prompt": "Use case: photorealistic-natural. Asset: mock personal phone photo for a private design lab, square. Casual imperfect smartphone snapshot, uneven ordinary lighting, slightly crooked framing, real everyday clutter. No polished commercial stock, no studio lighting, no text overlays or borders. Subject: a used plain hand cream tube on a bathroom sink, toothbrush cup partly cropped"
+    },
+    {
+      "file": "cardigan.png",
+      "prompt": "Use case: photorealistic-natural. Asset: mock personal phone photo for a private design lab, square. Casual imperfect smartphone snapshot, uneven ordinary lighting, slightly crooked framing, real everyday clutter. No polished commercial stock, no studio lighting, no text overlays or borders. Subject: a beige cardigan thrown over a chair at home, casual indoor evening light"
+    },
+    {
+      "file": "coast.png",
+      "prompt": "Use case: photorealistic-natural. Asset: mock personal phone photo for a private design lab, square. Casual imperfect smartphone snapshot, uneven ordinary lighting, slightly crooked framing, real everyday clutter. No polished commercial stock, no studio lighting, no text overlays or borders. Subject: a quiet seaside promenade seen on a walk, slightly tilted horizon, cloudy afternoon"
+    }
+  ]
+}
