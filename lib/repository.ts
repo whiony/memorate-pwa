@@ -1,7 +1,8 @@
 import { DEFAULT_PREFERENCES, INITIAL_CATEGORIES, type Category, type Note, type UserPreferences } from "./models.ts";
+import { newId } from "./id.ts";
 import { snapshotSchema, type Snapshot } from "./data-schema.ts";
 
-export interface NoteRepository { notes(): Promise<Note[]>; saveNote(note: Note): Promise<unknown>; deleteNote(id: string): Promise<unknown> }
+export interface NoteRepository { notes(): Promise<Note[]>; saveNote(note: Note, original?: Note): Promise<Note>; deleteNote(id: string): Promise<unknown> }
 export interface CategoryRepository { categories(): Promise<Category[]>; saveCategory(category: Category): Promise<unknown>; deleteCategory(id: string): Promise<void> }
 export interface UserPreferencesRepository { preferences(): Promise<UserPreferences>; savePreferences(value: UserPreferences): Promise<unknown> }
 export interface PhotoStorage { getPhoto(id: string): Promise<Blob | undefined> }
@@ -38,7 +39,21 @@ export const repository = {
   notes: () => read<Note[]>("notes"),
   categories: () => read<Category[]>("categories"),
   preferences: async () => (await read<{value:UserPreferences} | undefined>("preferences", "user"))?.value || DEFAULT_PREFERENCES,
-  saveNote: (note: Note) => mutate(tx => tx.objectStore("notes").put(note)),
+  async saveNote(note: Note, original?: Note): Promise<Note> {
+    let saved = note;
+    await mutate(tx => {
+      const store = tx.objectStore("notes");
+      if (!original) { store.put(saved); return; }
+      const current = store.get(original.id);
+      current.onsuccess = () => {
+        // A remote edit/delete can arrive while a form is open. Compare and save
+        // in one transaction, retaining the remote version and the user's draft.
+        if (!current.result || current.result.updatedAt !== original.updatedAt) saved = { ...note, id: newId(), title: `${note.title.slice(0,140)} (recovered copy)` };
+        store.put(saved);
+      };
+    });
+    return saved;
+  },
   deleteNote: (id: string) => mutate(tx => { tx.objectStore("notes").delete(id); }),
   saveCategory: (category: Category) => mutate(tx => tx.objectStore("categories").put({ ...category, updatedAt: new Date().toISOString() })),
   deleteCategory: (id: string) => mutate(tx => { tx.objectStore("categories").delete(id); const request = tx.objectStore("notes").openCursor(); request.onsuccess = () => { const cursor = request.result; if (!cursor) return; if (cursor.value.categoryId === id) cursor.update({ ...cursor.value, categoryId: null, updatedAt: new Date().toISOString() }); cursor.continue(); }; }),
