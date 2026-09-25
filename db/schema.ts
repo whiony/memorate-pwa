@@ -6,3 +6,6 @@ export const photos = sqliteTable("photos", { ownerId: text("owner_id").notNull(
 export const preferences = sqliteTable("preferences", { ownerId: text("owner_id").primaryKey(), theme: text("theme").notNull(), defaultCurrency: text("default_currency").notNull(), updatedAt: text("updated_at").notNull() });
 // Upload ledger lets sync validate ownership/existence without one R2 call per photo.
 export const photoObjects = sqliteTable("photo_objects", { ownerId:text("owner_id").notNull(),id:text("id").notNull(),storageKey:text("storage_key").notNull(),sha256:text("sha256").notNull(),size:integer("size").notNull(),createdAt:text("created_at").notNull() }, t=>[primaryKey({columns:[t.ownerId,t.id]})]);
+// Public catalog metadata only; kept separate from each user's private collection.
+export const productLookupCache = sqliteTable("product_lookup_cache", { barcode:text("barcode").primaryKey(), productJson:text("product_json").notNull(), fetchedAt:integer("fetched_at").notNull(), expiresAt:integer("expires_at").notNull() });
+export const productProviderBudget = sqliteTable("product_provider_budget", { provider:text("provider").primaryKey(), day:text("day").notNull(), requests:integer("requests").notNull(), nextAt:integer("next_at").notNull() });

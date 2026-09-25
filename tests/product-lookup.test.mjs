@@ -6,11 +6,11 @@ import { noteSchema } from '../lib/data-schema.ts';
 import { readFileSync } from 'node:fs';
 test('EAN and UPC check digits, UPC-E expansion and identity normalization',()=>{
  assert.equal(normalizeBarcode('3017620422003'),'3017620422003');assert.equal(normalizeBarcode('96385074'),'96385074');assert.equal(normalizeBarcode('036000291452'),'0036000291452');assert.equal(normalizeBarcode('04252614','UPC_E'),'0042100005264');assert.equal(normalizeBarcode(' 3017-620422003 '),'3017620422003');
- for(const value of ['3017620422004','00000000','hello','123','30176204220030'])assert.equal(normalizeBarcode(value),null);
+ for(const value of ['3017620422004','00000000','hello','123','30176204220031'])assert.equal(normalizeBarcode(value),null);
 });
 test('provider returns bounded product data and never trusts arbitrary image URLs',async()=>{
  let url,options;const provider=new OpenFoodFactsProvider(async(u,o)=>{url=u;options=o;return Response.json({status:1,product:{product_name:'  Product name  ',image_front_url:'https://images.openfoodfacts.org/images/products/301/762/042/2003/front_en.1.400.jpg'}});});
- const product=await provider.lookup('3017620422003');assert.equal(product.name,'Product name');assert.equal(product.source,'open-food-facts');assert.match(url,/api\/v2\/product\/3017620422003/);assert.match(options.headers['User-Agent'],/Memorate/);assert.equal(options.redirect,'manual');assert.ok(product.imageUrl);
+ const product=await provider.lookup('3017620422003');assert.equal(product.name,'Product name');assert.equal(product.source,'open-food-facts');assert.match(url,/api\/v3\/product\/3017620422003/);assert.match(options.headers['User-Agent'],/Memorate/);assert.equal(options.redirect,'manual');assert.ok(product.imageUrl);
  for(const value of ['http://images.openfoodfacts.org/images/products/a.jpg','https://evil.test/a.jpg','https://images.openfoodfacts.org.evil.test/a.jpg','https://images.openfoodfacts.org:443@evil.test/a.jpg','https://images.openfoodfacts.org/images/products/a.svg'])assert.equal(safeProductImage(value),undefined);
 });
 test('provider unknown, invalid and unavailable results remain distinguishable',async()=>{

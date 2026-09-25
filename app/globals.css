@@ -393,3 +393,14 @@ body { overscroll-behavior-x: none; }
 .product-attribution a { text-decoration:underline; }
 @media(max-width:700px) { .collection-layer.is-underneath { width:100%; left:0; } .detail-surface { min-height:calc(100dvh - 54px); } }
 @media(prefers-reduced-motion:reduce) { .detail-surface { animation:none!important; transition:none!important; } }
+
+/* Product capture is available directly from the collection on every screen size. */
+.home-actions { display:flex; align-items:center; gap:10px; }
+.scan-product-action { white-space:nowrap; min-height:44px; }
+.barcode-format { display:grid; gap:6px; margin-top:12px; font-size:14px; }
+.barcode-existing { display:flex; flex-wrap:wrap; gap:10px; }
+.barcode-existing p,.barcode-existing strong { flex-basis:100%; }
+@media(max-width:600px) {
+  .home-heading { gap:12px; align-items:center; }
+  .scan-product-action { padding:10px 12px; font-size:14px; }
+}
