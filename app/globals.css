@@ -432,3 +432,7 @@ body { overscroll-behavior-x: none; }
 .product-suggestion { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:14px; font-size:14px; }
 .product-suggestion small { display:block; color:var(--sub); margin-top:3px; }
 .product-suggestion button { flex-shrink:0; }
+
+.scanner-controls { display:flex; justify-content:center; flex-wrap:wrap; gap:8px; padding-inline:12px; }
+.scanner-torch[aria-pressed="true"] { background:var(--accent); border-color:var(--coral); color:var(--coral-strong); }
+.scanner-camera .scanner-torch-error { padding-inline:12px; color:var(--sub); font-size:13px; }
