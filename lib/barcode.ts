@@ -19,3 +19,9 @@ export function normalizeBarcode(input: string, format?: string): string | null 
   if (code.length === 13 && code.startsWith('00000')) code = code.slice(5);
   return code;
 }
+
+/** Choose the newest exact GTIN match without changing collection order. */
+export function existingBarcodeNote<T extends {id:string;barcode?:string;updatedAt:string}>(notes:T[],input:string):T|undefined {
+  const code=normalizeBarcode(input);if(!code)return;
+  return notes.filter(n=>n.barcode&&normalizeBarcode(n.barcode)===code).sort((a,b)=>(Date.parse(b.updatedAt)||0)-(Date.parse(a.updatedAt)||0)||a.id.localeCompare(b.id))[0];
+}

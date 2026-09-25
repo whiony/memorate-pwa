@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {existingBarcodeNote} from '../lib/barcode.ts';
 import assert from 'node:assert/strict';
 import {resolveProducts,imageScore} from '../lib/product-resolution.ts';
 import {normalizeFacts,normalizeGeneric} from '../lib/product-normalizers.ts';
@@ -101,4 +102,9 @@ test('image dimensions are checked before importing and malformed/tiny images ar
  const png=new Uint8Array(24),v=new DataView(png.buffer);v.setUint32(0,0x89504e47);v.setUint32(16,1200);v.setUint32(20,1600);
  assert.deepEqual(imageDimensions(png),{width:1200,height:1600});assert.equal(usableDimensions(imageDimensions(png)),true);assert.equal(imageDimensions(new Uint8Array([1,2,3])),null);
  for(const dimensions of [{width:40,height:60},{width:8000,height:8000},{width:100,height:3000}])assert.equal(usableDimensions(dimensions),false);
+});
+
+test('existing barcode opens newest equivalent GTIN only, without changing or merging notes',()=>{
+ const notes=[{id:'older',barcode:'0036000291452',updatedAt:'2026-09-01T10:00:00Z'},{id:'newer',barcode:'00036000291452',updatedAt:'2026-09-25T10:00:00Z'},{id:'different',barcode:'6901668054715',updatedAt:'2026-09-26T10:00:00Z'}];
+ assert.equal(existingBarcodeNote(notes,'036000291452').id,'newer');assert.equal(existingBarcodeNote(notes,'96385074'),undefined);assert.equal(existingBarcodeNote(notes,'invalid'),undefined);assert.deepEqual(notes.map(n=>n.id),['older','newer','different']);
 });

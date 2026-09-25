@@ -1,0 +1,31 @@
+import {test,expect} from '@playwright/test';
+import type {Page} from '@playwright/test';
+async function seed(page:Page){
+ await page.goto('/');await expect(page.getByRole('heading',{name:/All notes/})).toBeVisible();
+ await page.evaluate(async()=>{const db=await new Promise<IDBDatabase>(resolve=>{const r=indexedDB.open('memorate',2);r.onsuccess=()=>resolve(r.result);});await new Promise<void>(resolve=>{const tx=db.transaction('notes','readwrite');for(let i=0;i<20;i++)tx.objectStore('notes').put({id:`coverage-${i}`,title:`Coverage ${i}`,categoryId:'food',rating:4,date:'2026-09-25',comment:i===0?'Long personal note.\n'.repeat(300):'',price:null,currency:'EUR',createdAt:'2026-09-01T10:00:00Z',updatedAt:`2026-09-${i===2?'25':'01'}T10:00:00Z`,photos:[],syncState:'local',...(i===1||i===2?{barcode:i===1?'0036000291452':'00036000291452',productInfo:{barcode:'0036000291452',brand:'Example',ingredients:'An ingredient',sources:['upcitemdb']}}:{})});tx.oncomplete=()=>{db.close();resolve();};});});await page.reload();await expect(page.locator('.note-card')).toHaveCount(20);
+}
+for(const width of [390,1280])test(`detail owns scrolling and covers the full viewport at ${width}px, including short notes`,async({page})=>{
+ await page.setViewportSize({width,height:650});await seed(page);
+ const covers=async()=>{const box=await page.locator('.detail-surface').boundingBox(),header=await page.locator('.app-header').boundingBox();expect(box!.x).toBe(0);expect(box!.width).toBe(width);expect(box!.y).toBeCloseTo(header!.y+header!.height);expect(box!.y+box!.height).toBeCloseTo(650);await expect(page.locator('.detail-surface')).not.toHaveCSS('background-color','rgba(0, 0, 0, 0)');expect(await page.evaluate(()=>scrollY)).toBe(0);};
+ await page.getByRole('button').filter({has:page.getByRole('heading',{name:'Coverage 0',exact:true})}).click();await expect(page.locator('.detail-surface')).toHaveCSS('translate','none');await covers();
+ await page.locator('.detail-surface').evaluate(e=>e.scrollTop=e.scrollHeight);expect(await page.locator('.detail-surface').evaluate(e=>e.scrollTop)).toBeGreaterThan(1000);await covers();
+ await page.getByRole('button',{name:'All notes',exact:true}).click();await page.getByRole('button').filter({has:page.getByRole('heading',{name:'Coverage 1',exact:true})}).click();await expect(page.locator('.detail-surface')).toHaveCSS('translate','none');await covers();
+ await expect(page.locator('.detail-facts')).toHaveCSS('border-bottom-width','0px');await expect(page.locator('.detail-copy > .product-info')).toHaveCSS('border-top-width','0px');
+ const toggle=page.getByRole('button',{name:'Product info',exact:true});await expect(toggle).toHaveAttribute('aria-expanded','false');expect((await toggle.boundingBox())!.height).toBeGreaterThanOrEqual(44);await toggle.click();await expect(toggle).toHaveAttribute('aria-expanded','true');await expect(page.getByText('An ingredient',{exact:true})).toBeVisible();await toggle.press('Space');await expect(toggle).toHaveAttribute('aria-expanded','false');await expect(page.getByText('An ingredient',{exact:true})).toBeHidden();await covers();
+ await page.setViewportSize({width,height:500});await expect.poll(()=>page.locator('.detail-surface').evaluate(e=>e.getBoundingClientRect().bottom)).toBe(500);
+});
+test('mobile quick scan opens latest existing note immediately without lookup or duplicate creation',async({page})=>{
+ await page.setViewportSize({width:390,height:700});await seed(page);let lookups=0;await page.route('**/api/products/**',r=>{lookups++;return r.fulfill({status:500});});
+ await page.getByRole('button',{name:'Scan product',exact:true}).click();await page.getByLabel('Barcode number').fill('036000291452');await page.getByRole('button',{name:'Find product',exact:true}).click();
+ await expect(page.locator('.detail-view h1')).toHaveText('Coverage 2');await expect(page.getByText('Already in Memorate',{exact:true})).toBeVisible();await expect(page.getByRole('dialog',{name:'Scan product',exact:true})).toBeHidden();expect(lookups).toBe(0);await expect(page.getByRole('button',{name:'Create another note'})).toHaveCount(0);
+ await page.getByRole('button',{name:'All notes',exact:true}).click();await expect(page.locator('.note-card')).toHaveCount(20);
+ await page.getByRole('button',{name:'Scan product',exact:true}).click();await page.getByLabel('Barcode number').fill('036000291452');await page.getByRole('button',{name:'Continue manually',exact:true}).click();await expect(page.locator('.detail-view h1')).toHaveText('Coverage 2');expect(lookups).toBe(0);
+});
+test('desktop scanning is secondary inside New Note and opens existing notes directly',async({page})=>{
+ await page.setViewportSize({width:1280,height:800});await seed(page);await expect(page.locator('.home-actions').getByRole('button',{name:'Scan product',exact:true})).toBeHidden();await page.getByRole('button',{name:'New note',exact:true}).click();await page.getByRole('button',{name:'Scan product',exact:true}).click();await page.getByLabel('Barcode number').fill('0036000291452');await page.getByRole('button',{name:'Find product',exact:true}).click();await expect(page.locator('.detail-view h1')).toHaveText('Coverage 2');await expect(page.locator('.editor-sheet')).toBeHidden();await page.getByRole('button',{name:'All notes',exact:true}).click();await expect(page.locator('.note-card')).toHaveCount(20);
+});
+test('Settings shows the active sync label once and useful secondary text',async({browser})=>{
+ const ctx=await browser.newContext({extraHTTPHeaders:{'oai-authenticated-user-id':`status-${crypto.randomUUID()}`,'oai-authenticated-user-email':'qa@sites.test'}});const page=await ctx.newPage();let release!:()=>void;const held=new Promise<void>(resolve=>{release=resolve;});
+ await page.route('**/api/sync',async r=>{await held;await r.continue();});
+ try{await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await expect(page.getByRole('button',{name:'Syncing…',exact:true})).toBeVisible();await expect(page.getByText('Syncing…',{exact:true})).toHaveCount(1);await expect(page.locator('.settings-view [role="status"]')).toHaveText('Your notes are saved on this device.');release();await expect(page.getByText('Cloud backup is up to date',{exact:true})).toBeVisible();}finally{release();await ctx.close();}
+});
