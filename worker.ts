@@ -11,9 +11,13 @@ const worker = {
     // loaded client-side. Do not retain this marker if personalized SSR is added.
     if (path.pathname === "/" && !path.search && secured.status === 200 && secured.headers.get("Content-Type")?.includes("text/html")) secured.headers.set("X-Memorate-Offline-Shell", "1");
     if (path.pathname === "/sw.js") secured.headers.set("Cache-Control", "no-cache");
+    if (path.pathname.startsWith("/shared/") || path.pathname.startsWith("/api/shared/")) {
+      secured.headers.set("Cache-Control", "no-store, max-age=0");
+      secured.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+    }
     secured.headers.delete("X-Powered-By");
     secured.headers.set("X-Content-Type-Options", "nosniff");
-    secured.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+    secured.headers.set("Referrer-Policy", path.pathname.startsWith("/shared/") || path.pathname.startsWith("/api/shared/") ? "no-referrer" : "strict-origin-when-cross-origin");
     secured.headers.set("Content-Security-Policy", "object-src 'none'; base-uri 'self'; form-action 'self'");
     return secured;
   },

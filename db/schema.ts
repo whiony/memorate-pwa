@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real, primaryKey } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, primaryKey, uniqueIndex } from "drizzle-orm/sqlite-core";
 export const syncState = sqliteTable("sync_state", { ownerId: text("owner_id").primaryKey(), revision: integer("revision").notNull().default(0), mutationId: text("mutation_id").notNull().default("") });
 export const categories = sqliteTable("categories", { ownerId: text("owner_id").notNull(), id: text("id").notNull(), name: text("name").notNull(), color: text("color").notNull(), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull() }, t => [primaryKey({columns:[t.ownerId,t.id]})]);
 export const notes = sqliteTable("notes", { ownerId: text("owner_id").notNull(), id: text("id").notNull(), title: text("title").notNull(), barcode: text("barcode"), productSource: text("product_source"), productInfo: text("product_info"), comment: text("comment").notNull(), rating: integer("rating"), price: real("price"), currency: text("currency").notNull(), categoryId: text("category_id"), noteDate: text("note_date").notNull(), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull() }, t => [primaryKey({columns:[t.ownerId,t.id]})]);
@@ -9,3 +9,5 @@ export const photoObjects = sqliteTable("photo_objects", { ownerId:text("owner_i
 // Public catalog metadata only; kept separate from each user's private collection.
 export const productLookupCache = sqliteTable("product_lookup_cache", { barcode:text("barcode").primaryKey(), productJson:text("product_json").notNull(), fetchedAt:integer("fetched_at").notNull(), expiresAt:integer("expires_at").notNull() });
 export const productProviderBudget = sqliteTable("product_provider_budget", { provider:text("provider").primaryKey(), day:text("day").notNull(), requests:integer("requests").notNull(), nextAt:integer("next_at").notNull() });
+// Opt-in, revocable public snapshots; never joined into anonymous collection APIs.
+export const sharedNotes = sqliteTable('shared_notes', { token:text('token').primaryKey(), ownerId:text('owner_id').notNull(), noteId:text('note_id').notNull(), publicJson:text('public_json').notNull(), createdAt:text('created_at').notNull() }, t=>[uniqueIndex('shared_notes_owner_note').on(t.ownerId,t.noteId)]);

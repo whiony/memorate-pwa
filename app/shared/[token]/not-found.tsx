@@ -1,0 +1,1 @@
+export default function MissingSharedNote(){return <main className="public-note-page"><div className="public-unavailable"><h1>This link is no longer available</h1><p>The link may have been revoked or is incorrect.</p><span className="wordmark">memorate.</span></div></main>;}

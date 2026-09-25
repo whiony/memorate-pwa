@@ -25,7 +25,7 @@ function worker() {
 
 test('auth and query navigations bypass offline shell; root still works offline', async () => {
   const w = worker(); w.stored.set('/', new Response('anonymous shell')); w.respond(new Error('offline'));
-  for (const path of ['/callback?code=secret', '/signin-with-chatgpt', '/account', '/?token=secret']) assert.equal(await w.navigate(path), undefined);
+  for (const path of ['/callback?code=secret', '/signin-with-chatgpt', '/account', '/shared/secret', '/api/shared/secret/photos/0', '/?token=secret']) assert.equal(await w.navigate(path), undefined);
   assert.equal(await (await w.navigate('/')).text(), 'anonymous shell');
 });
 test('online navigation cannot overwrite the anonymous cached shell', async () => {
@@ -35,7 +35,7 @@ test('online navigation cannot overwrite the anonymous cached shell', async () =
 });
 test('precache rejects dynamic endpoints, foreign URLs, malformed URLs and query strings', async () => {
   const w = worker();
-  await w.message(['https://evil.test/x.js', '/api/export.js', '/_next/image', '/_next/static/x.js?token=secret', 'http://[', null, '/assets/app.js', '/_next/static/chunks/a.js']);
+  await w.message(['https://evil.test/x.js', '/api/export.js', '/shared/secret', '/api/shared/secret/photos/0', '/_next/image', '/_next/static/x.js?token=secret', 'http://[', null, '/assets/app.js', '/_next/static/chunks/a.js']);
   assert.deepEqual(w.calls.map(call => call[0]), [origin + '/assets/app.js', origin + '/_next/static/chunks/a.js']);
 });
 test('precache requires a controlled same-origin client and bounds each batch', async () => {

@@ -1,8 +1,9 @@
+import { THEME_IDS } from "./themes.ts";
 import { productInfoSchema } from './product-info.ts';
 import { z } from "zod";
 export const idSchema = z.string().min(1).max(100).regex(/^[a-zA-Z0-9_-]+$/);
 const timestamp = z.string().datetime().or(z.literal(""));
-export const preferencesSchema = z.object({ theme: z.enum(["system", "light", "dark", "amoled"]), defaultCurrency: z.string().regex(/^[A-Z]{3}$/) }).strict();
+export const preferencesSchema = z.object({ theme: z.enum(THEME_IDS), defaultCurrency: z.string().regex(/^[A-Z]{3}$/) }).strict();
 export const categorySchema = z.object({ id: idSchema, name: z.string().trim().min(1).max(32), color: z.string().regex(/^#[a-fA-F0-9]{6}$/), createdAt: timestamp, updatedAt: timestamp.optional() }).strict();
 export const photoSchema = z.object({ id: idSchema, mimeType: z.literal("image/jpeg"), width: z.number().int().positive().max(4096), height: z.number().int().positive().max(4096) }).strict();
 export const noteSchema = z.object({ id: idSchema, title: z.string().trim().min(1).max(160), productInfo: productInfoSchema.optional(), barcode: z.string().regex(/^(?:\d{8}|\d{13}|\d{14})$/).optional(), productSource: z.enum(["open-food-facts","open-beauty-facts","open-pet-food-facts","open-products-facts","upcitemdb","go-upc","open-fda"]).optional(), rating: z.number().int().min(1).max(5).nullable(), categoryId: idSchema.nullable(), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(s => !Number.isNaN(Date.parse(s)) && new Date(s).toISOString().slice(0,10) === s), comment: z.string().max(20000), price: z.number().finite().min(0).max(1e12).nullable(), currency: z.string().regex(/^[A-Z]{3}$/), photos: z.array(photoSchema).max(12), createdAt: timestamp, updatedAt: timestamp }).strict();

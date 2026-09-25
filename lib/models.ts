@@ -18,7 +18,8 @@ export type Note = {
   syncState: "local" | "pending";
 };
 export type Category = { id: string; name: string; color: string; createdAt: string; updatedAt?: string };
-export type ThemePreference = "system" | "light" | "dark" | "amoled";
+import type { ThemePreference } from "./themes";
+export type { ThemePreference } from "./themes";
 export type UserPreferences = { theme: ThemePreference; defaultCurrency: string };
 
 export const INITIAL_CATEGORIES: Category[] = [
