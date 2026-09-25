@@ -13,7 +13,7 @@ export class D1ProductStore implements ProductStore {
     ]);
   }
   async reserve(provider: string, now: number) {
-    const day=new Date(now).toISOString().slice(0,10), interval=provider==='upcitemdb'?11000:2500, daily=provider==='upcitemdb'?100:100000;
+    const day=new Date(now).toISOString().slice(0,10), interval=provider==='upcitemdb'?11000:2500, daily=provider==='upcitemdb'?100:provider==='open-fda'?1000:provider==='go-upc'?150:100000;
     const row=await this.db.prepare(`INSERT INTO product_provider_budget (provider,day,requests,next_at) VALUES (?,?,1,?)
       ON CONFLICT(provider) DO UPDATE SET day=excluded.day, requests=CASE WHEN product_provider_budget.day=excluded.day THEN product_provider_budget.requests+1 ELSE 1 END,next_at=excluded.next_at
       WHERE product_provider_budget.next_at<=? AND (product_provider_budget.day<>excluded.day OR product_provider_budget.requests<?) RETURNING provider`).bind(provider,day,now+interval,now,daily).first();

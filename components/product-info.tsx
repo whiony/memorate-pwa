@@ -1,0 +1,7 @@
+import type { ProductInfo } from '@/lib/product-info';
+const SOURCES:Record<string,string>={'open-food-facts':'Open Food Facts','open-beauty-facts':'Open Beauty Facts','open-pet-food-facts':'Open Pet Food Facts','open-products-facts':'Open Products Facts',upcitemdb:'UPCitemdb','go-upc':'Go-UPC','open-fda':'openFDA'};
+export function ProductInformation({info}:{info?:ProductInfo}) {
+ if(!info)return null;
+ const rows:[string,string|undefined][]=[['Brand',info.brand],['Product type',info.productType],['Variant',info.variant],['Flavor',info.flavor],['Package size',info.quantity],['Ingredients / INCI',info.ingredients],['Allergens',info.allergens],['Active ingredient',info.activeIngredient],['Strength',info.strength],['Pharmaceutical form',info.pharmaceuticalForm],['Expiry date',info.expiryDate],['Batch / lot',info.batchNumber],['Market',info.sourceCountry],['Barcode',info.barcode],['Code type',info.barcodeType],['Original name',info.originalName!==info.displayName?info.originalName:undefined]];
+ return <details className="product-info"><summary>Product info</summary><dl>{rows.filter(([,value])=>value).map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}{info.nutrition?.map(row=><div key={row.name}><dt>{row.name}</dt><dd>{row.value}</dd></div>)}{info.sources?.length ? <div><dt>Sources</dt><dd>{info.sources.map(s=>SOURCES[s]||s).join(', ')}</dd></div>:null}</dl></details>;
+}

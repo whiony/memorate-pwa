@@ -404,3 +404,11 @@ body { overscroll-behavior-x: none; }
   .home-heading { gap:12px; align-items:center; }
   .scan-product-action { padding:10px 12px; font-size:14px; }
 }
+.product-info { border-top:1px solid var(--line); margin-top:20px; padding-top:14px; font-size:14px; }
+.product-info summary { cursor:pointer; font-weight:600; padding:6px 0; }
+.product-info dl { margin:12px 0; display:grid; gap:12px; }
+.product-info dt { color:var(--sub); font-size:13px; margin-bottom:3px; }
+.product-info dd { margin:0; line-height:1.55; overflow-wrap:anywhere; white-space:pre-wrap; }
+.product-suggestion { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:14px; font-size:14px; }
+.product-suggestion small { display:block; color:var(--sub); margin-top:3px; }
+.product-suggestion button { flex-shrink:0; }

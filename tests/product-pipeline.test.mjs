@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { normalizeBarcode } from '../lib/barcode.ts';
 import { OpenFactsProvider, UPCItemDbProvider, LookupError, retryAfter } from '../lib/product-lookup.ts';
+import { resolveProducts } from '../lib/product-resolution.ts';
 import { ProductLookupService } from '../lib/product-service.ts';
 import { D1ProductStore } from '../lib/product-store.ts';
 import { noteSchema } from '../lib/data-schema.ts';
@@ -40,7 +41,7 @@ test('404 and empty results are not errors; 429 honors Retry-After and reset hea
 test('timeouts, malformed JSON, HTTP errors fall through to the next provider',async()=>{
  for(const failure of [async()=>{throw new DOMException('Timed out','TimeoutError');},async()=>new Response('not json'),async()=>new Response(null,{status:503})]) {
   const diagnostics=[];const service=new ProductLookupService([new OpenFactsProvider(failure),provider('fallback',async()=>product)],memory(),Date.now,e=>diagnostics.push(e));
-  assert.deepEqual(await service.lookup(code),product);assert.equal(diagnostics[0].outcome,'error');assert.equal(diagnostics[1].outcome,'found');
+  assert.deepEqual(await service.lookup(code),resolveProducts([product]));assert.equal(diagnostics[0].outcome,'error');assert.equal(diagnostics[1].outcome,'found');
  }
 });
 test('network deadline is passed to providers and cancellation does not start another provider',async()=>{
@@ -51,7 +52,7 @@ test('network deadline is passed to providers and cancellation does not start an
 });
 test('fallback caches successes for equivalent codes; expiration refreshes; no-image product remains successful',async()=>{
  let now=1000,calls=0;const store=memory();const service=new ProductLookupService([provider('facts',async()=>null),provider('upc',async()=>{calls++;return product;})],store,()=>now);
- assert.deepEqual(await service.lookup('036000291452'),product);assert.deepEqual(await service.lookup('00036000291452'),product);assert.equal(calls,1);assert.equal(store.values.get(code).fetchedAt,1000);
+ assert.deepEqual(await service.lookup('036000291452'),resolveProducts([product]));assert.deepEqual(await service.lookup('00036000291452'),resolveProducts([product]));assert.equal(calls,1);assert.equal(store.values.get(code).fetchedAt,1000);
  now+=8*86400000;await service.lookup(code);assert.equal(calls,2);
 });
 test('not-found requires all providers to respond; rate limits are retained across requests',async()=>{
@@ -67,8 +68,8 @@ function sqliteStore(){
 }
 test('D1 cache is shared across service instances and persisted quota prevents bursts/daily overuse',async()=>{
  const {db,store}=sqliteStore();const now=Date.parse('2026-09-25T12:00:00Z');
- await store.put({product,fetchedAt:now,expiresAt:now+86400000});assert.deepEqual((await store.get(code)).product,product);
- const cachedService=new ProductLookupService([provider('must not fetch',()=>{throw new Error('Unexpected fetch');})],store,()=>now);assert.deepEqual(await cachedService.lookup('036000291452'),product);
+ await store.put({product:resolveProducts([product]),fetchedAt:now,expiresAt:now+86400000});assert.deepEqual((await store.get(code)).product,JSON.parse(JSON.stringify(resolveProducts([product]))));
+ const cachedService=new ProductLookupService([provider('must not fetch',()=>{throw new Error('Unexpected fetch');})],store,()=>now);assert.deepEqual(await cachedService.lookup('036000291452'),JSON.parse(JSON.stringify(resolveProducts([product]))));
  assert.equal(await store.reserve('upcitemdb',now),0);assert.equal(await store.reserve('upcitemdb',now+100),11);assert.equal(await store.reserve('upcitemdb',now+11000),0);
  await store.pause('upcitemdb',now+120000);assert.equal(await store.reserve('upcitemdb',now+12000),108);
  db.prepare('UPDATE product_provider_budget SET requests=100,next_at=0 WHERE provider=?').run('upcitemdb');assert.equal(await store.reserve('upcitemdb',now),43200);assert.equal(await store.reserve('upcitemdb',now+86400000),0);
@@ -76,5 +77,5 @@ test('D1 cache is shared across service instances and persisted quota prevents b
 });
 test('every lookup source and GTIN-14 round-trips through notes/backup/sync schema',()=>{
  const note={id:'n',title:'Product',barcode:'10012345000017',rating:null,categoryId:null,date:'2026-09-25',comment:'',price:null,currency:'EUR',photos:[],createdAt:'',updatedAt:''};
- for(const source of ['open-food-facts','open-beauty-facts','open-pet-food-facts','open-products-facts','upcitemdb'])assert.equal(noteSchema.parse({...note,productSource:source}).productSource,source);
+ for(const source of ['open-food-facts','open-beauty-facts','open-pet-food-facts','open-products-facts','upcitemdb','go-upc','open-fda'])assert.equal(noteSchema.parse({...note,productSource:source}).productSource,source);
 });

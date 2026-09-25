@@ -1,9 +1,11 @@
+import type { ProductInfo } from './product-info';
 export type Photo = { id: string; blob: Blob; width?: number; height?: number };
 export type Note = {
   id: string;
   title: string;
   barcode?: string;
   productSource?: string;
+  productInfo?: ProductInfo;
   rating: number | null;
   categoryId: string | null;
   date: string;

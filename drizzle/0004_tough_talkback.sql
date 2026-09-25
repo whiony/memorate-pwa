@@ -1,0 +1,1 @@
+ALTER TABLE `notes` ADD `product_info` text;

@@ -1,3 +1,4 @@
+import { resolveProducts } from './product-resolution.ts';
 import { normalizeBarcode } from './barcode.ts';
 import { LookupError, type Product, type ProductLookupProvider } from './product-lookup.ts';
 export type CachedProduct = { product: Product; fetchedAt: number; expiresAt: number };
@@ -21,21 +22,19 @@ export class ProductLookupService implements ProductLookupProvider {
   async lookup(input: string, signal?: AbortSignal): Promise<Product | null> {
     const barcode = normalizeBarcode(input); if (!barcode) throw new Error('Invalid retail barcode');
     const cached = await this.store.get(barcode);
-    if (cached && cached.expiresAt > this.clock()) { this.log({barcode,provider:cached.product.source,outcome:'cache-hit',durationMs:0}); return cached.product; }
+    if (cached && cached.product.resolutionVersion === 3 && cached.expiresAt > this.clock()) { this.log({barcode,provider:cached.product.source,outcome:'cache-hit',durationMs:0}); return cached.product; }
     let failure: Error | undefined;
+    const results: Product[]=[];
     for (const provider of this.providers) {
       signal?.throwIfAborted();
+      if(provider.supports&&!provider.supports(barcode))continue;
       const start = this.clock();
       try {
         const wait = await this.store.reserve(provider.id,start);
         if (wait) throw new LookupError('Product search is busy. Try again shortly or continue manually.',429,wait);
         const product = await provider.lookup(barcode,signal);
         this.log({barcode,provider:provider.id,outcome:product ? 'found' : 'not-found',durationMs:this.clock()-start});
-        if (product) {
-          const now = this.clock();
-          await this.store.put({product,fetchedAt:now,expiresAt:now+7*86400000});
-          return product;
-        }
+        if (product) results.push(product);
       } catch (error) {
         signal?.throwIfAborted();
         const current = error instanceof Error ? error : new Error('Lookup failed');
@@ -46,6 +45,8 @@ export class ProductLookupService implements ProductLookupProvider {
         } else if (!failure) failure=current;
       }
     }
+    const resolved=resolveProducts(results,'en');
+    if(resolved){const now=this.clock();await this.store.put({product:resolved,fetchedAt:now,expiresAt:now+(failure?15*60000:7*86400000)});return resolved;}
     // A partial outage isn't proof that no database contains this product.
     if (failure) throw failure;
     return null;
